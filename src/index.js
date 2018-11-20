@@ -541,7 +541,7 @@ const O = {
     return `${str[0].toUpperCase()}${str.substring(1)}`;
   },
 
-  indent(str, indent){ return `${'  '.repeat(indent)}${str}`; },
+  indent(str, indent){ return `${' '.repeat(indent << 1)}${str}`; },
 
   /*
     Array functions
@@ -600,7 +600,7 @@ const O = {
   last(arr){ return arr[arr.length - 1]; },
 
   /*
-    Other functions
+    Random number generator
   */
 
   enhanceRNG(){
@@ -655,6 +655,10 @@ const O = {
     if(splice) return arr.splice(index, 1)[0];
     return arr[index];
   },
+
+  /*
+    Other functions
+  */
 
   repeat(num, func){
     for(var i = 0; i !== num; i++) func(i);
