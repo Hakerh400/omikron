@@ -106,7 +106,7 @@ describe('Random number generator', () => {
     assert.strictEqual(vals.size, 50);
   });
 
-  it('Generates random integer in the given range', () => {
+  it('Generates random integer in custom range', () => {
     var vals = new Set();
     var maxSteps = 1e3;
 
@@ -122,7 +122,7 @@ describe('Random number generator', () => {
     assert.strictEqual(vals.size, 5);
   });
 
-  it('Generates random double in the given range', () => {
+  it('Generates random double in custom range', () => {
     var vals = new Set();
     var maxSteps = 1e3;
 
@@ -176,7 +176,7 @@ describe('Random number generator', () => {
 });
 
 describe('Other functions', () => {
-  it('Repeat function', () => {
+  it('Repeats function', () => {
     var arr = [];
 
     O.repeat(5, i => {
@@ -187,7 +187,7 @@ describe('Other functions', () => {
     assert.strictEqual(arr.join(','), '0,1,2,3,4');
   });
 
-  it('Repeat function asynchronously', done => {
+  it('Repeats function asynchronously', done => {
     var arr = [];
 
     O.repeata(4, i => new Promise(res => {
