@@ -2055,7 +2055,7 @@ const O = {
     }
   },
 
-  IntStream: class{
+  /*IntStream: class{
     constructor(d=null){
       if(d === null) d = 0n;
       else if(typeof d === 'number') d = BigInt(d);
@@ -2105,7 +2105,7 @@ const O = {
 
       return arr;
     }
-  },
+  },*/
 
   Buffer: class extends Uint8Array{
     constructor(...params){
