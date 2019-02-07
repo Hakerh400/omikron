@@ -13,80 +13,2044 @@ class Document{
 const window = new Window();
 const {document} = window;
 
+'use strict';
+
+class Vector{
+  constructor(x=0, y=0){
+    this.set(x, y);
+  }
+
+  static fromAngle(len, angle){
+    var x = Math.cos(angle) * len;
+    var y = Math.sin(angle) * len;
+
+    return new O.Vector(x, y);
+  }
+
+  set(x, y){
+    if(x instanceof O.Vector)
+      ({x, y} = x);
+
+    this.x = x;
+    this.y = y;
+
+    return this;
+  }
+
+  clone(){
+    return new O.Vector(this.x, this.y);
+  }
+
+  add(x, y){
+    if(x instanceof O.Vector)
+      ({x, y} = x);
+
+    this.x += x;
+    this.y += y;
+
+    return this;
+  }
+
+  sub(x, y){
+    if(x instanceof O.Vector)
+      ({x, y} = x);
+
+    this.x -= x;
+    this.y -= y;
+
+    return this;
+  }
+
+  mul(val){
+    this.x *= val;
+    this.y *= val;
+
+    return this;
+  }
+
+  div(val){
+    this.x /= val;
+    this.y /= val;
+
+    return this;
+  }
+
+  combine(len, angle){
+    this.x += Math.cos(angle) * len;
+    this.y += Math.sin(angle) * len;
+
+    return this;
+  }
+
+  dec(x, y){
+    if(x instanceof O.Vector)
+      ({x, y} = x);
+
+    if(x !== 0){
+      var sx = this.x > 0 ? 1 : -1;
+      if(Math.abs(this.x) > x) this.x = x * sx - this.x;
+      else this.x = 0;
+    }
+
+    if(y !== 0){
+      var sy = this.y > 0 ? 1 : -1;
+      if(Math.abs(this.y) > y) this.y = y * sy - this.y;
+      else this.y = 0;
+    }
+
+    return this;
+  }
+
+  len(){
+    return Math.sqrt(this.x * this.x + this.y * this.y);
+  }
+
+  lenM(){
+    return Math.abs(this.x) + Math.abs(this.y);
+  }
+
+  setLen(len){
+    var angle = this.angle();
+
+    this.x = Math.cos(angle) * len;
+    this.y = Math.sin(angle) * len;
+
+    return this;
+  }
+
+  angle(){
+    return Math.atan2(this.y, this.x);
+  }
+
+  setAngle(angle){
+    var len = this.len();
+
+    this.x = Math.cos(angle) * len;
+    this.y = Math.sin(angle) * len;
+
+    return this;
+  }
+
+  norm(){
+    this.div(this.len());
+
+    return this;
+  }
+
+  dist(x, y){
+    if(x instanceof O.Vector)
+      ({x, y} = x);
+
+    var dx = this.x - x;
+    var dy = this.y - y;
+    
+    return Math.sqrt(dx * dx + dy * dy);;
+  }
+
+  maxLen(maxLen){
+    if(this.len() > maxLen)
+      this.setLen(maxLen);
+
+    return this;
+  }
+
+  rotate(angle){
+    var sin = Math.sin(angle);
+    var cos = Math.cos(angle);
+    var x = this.x * cos - this.y * sin;
+    var y = this.x * sin + this.y * cos;
+
+    this.x = x;
+    this.y = y;
+
+    return this;
+  }
+
+  isIn(x1, y1, x2, y2){
+    var {x, y} = this;
+    return x >= x1 && y >= y1 && x < x2 && y < y2;
+  }
+};
+
+class Color extends Uint8ClampedArray{
+  constructor(r, g, b){
+    super(3);
+
+    this.set(r, g, b);
+  }
+
+  static from(rgb){
+    return new O.Color(rgb[0], rgb[1], rgb[2]);
+  }
+
+  static rand(hsv=0){
+    let rgb;
+
+    if(!hsv) rgb = O.ca(3, () => O.rand(256));
+    else rgb = O.hsv(O.randf(1));
+
+    return O.Color.from(rgb);
+  }
+
+  clone(){
+    return O.Color.from(this);
+  }
+
+  from(col){
+    this[0] = col[0];
+    this[1] = col[1];
+    this[2] = col[2];
+    this.updateStr();
+  }
+
+  set(r, g, b){
+    this[0] = r;
+    this[1] = g;
+    this[2] = b;
+    this.updateStr();
+  }
+
+  setR(r){
+    this[0] = r;
+    this.updateStr();
+  }
+
+  setG(g){
+    this[1] = g;
+    this.updateStr();
+  }
+
+  setB(b){
+    this[2] = b;
+    this.updateStr();
+  }
+
+  updateStr(){
+    this.str = `#${[...this].map(byte => {
+      return byte.toString(16).padStart(2, '0');
+    }).join('')}`;
+  }
+
+  toString(){
+    return this.str;
+  }
+};
+
+class Grid{
+  constructor(w, h, func=null, d=null){
+    this.w = w;
+    this.h = h;
+
+    if(d === null){
+      d = O.ca(h, y => {
+        return O.ca(w, x =>{
+          if(func === null) return O.obj();
+          return func(x, y);
+        });
+      });
+    }
+
+    this.d = d;
+  }
+
+  iter(func){
+    const {w, h} = this;
+
+    for(let y = 0; y !== h; y++)
+      for(let x = 0; x !== w; x++)
+        func(x, y, this.get(x, y));
+  }
+
+  iterate(func){
+    this.iter(func);
+  }
+
+  some(func){
+    const {w, h} = this;
+
+    for(let y = 0; y !== h; y++)
+      for(let x = 0; x !== w; x++)
+        if(func(x, y, this.get(x, y)))
+          return 1;
+
+    return 0;
+  }
+
+  find(v, func){
+    const {w, h} = this;
+
+    for(let y = 0; y !== h; y++){
+      for(let x = 0; x !== w; x++){
+        if(func(x, y, this.get(x, y))){
+          v.x = x;
+          v.y = y;
+          return 1;
+        }
+      }
+    }
+
+    return 0;
+  }
+
+  count(func){
+    const {w, h} = this;
+    let num = 0;
+
+    for(let y = 0; y !== h; y++)
+      for(let x = 0; x !== w; x++)
+        if(func(x, y, this.get(x, y)))
+          num++;
+
+    return num;
+  }
+
+  iterAdj(x, y, wrap, func=null){
+    if(func === null){
+      func = wrap;
+      wrap = 0;
+    }
+
+    const queue = [x, y];
+    const queued = new O.Map2D(x, y);
+    const visited = new O.Map2D();
+
+    while(queue.length !== 0){
+      const x = queue.shift();
+      const y = queue.shift();
+
+      queued.remove(x, y);
+      visited.add(x, y);
+
+      this.adj(x, y, wrap, (x1, y1, d, dir, wrapped) => {
+        if(d === null) return;
+        if(queued.has(x1, y1)) return;
+        if(visited.has(x1, y1)) return;
+
+        if(func(x1, y1, d, x, y, dir, wrapped)){
+          queue.push(x1, y1);
+          queued.add(x1, y1);
+        }
+      });
+    }
+  }
+
+  adj(x, y, wrap, func=null){
+    const {w, h} = this;
+
+    if(func === null){
+      func = wrap;
+      wrap = 0;
+    }
+
+    let wd = 0;
+
+    return (
+      func(x, (wd = wrap && y === 0) ? h - 1 : y - 1, this.get(x, y - 1, wrap), 0, wd) ||
+      func((wd = wrap && x === w - 1) ? 0 : x + 1, y, this.get(x + 1, y, wrap), 1, wd) ||
+      func(x, (wd = wrap && y === h - 1) ? 0 : y + 1, this.get(x, y + 1, wrap), 2, wd) ||
+      func((wd = wrap && x === 0) ? w - 1 : x - 1, y, this.get(x - 1, y, wrap), 3, wd)
+    );
+  }
+
+  adjc(x, y, wrap, func=null){
+    const {w, h} = this;
+
+    if(func === null){
+      func = wrap;
+      wrap = 0;
+    }
+
+    return (
+      func(wrap && x === 0 ? w - 1 : x - 1, wrap && y === 0 ? h - 1 : y - 1, this.get(x - 1, y - 1, wrap), 0) ||
+      func(wrap && x === w - 1 ? 0 : x + 1, wrap && y === 0 ? h - 1 : y - 1, this.get(x + 1, y - 1, wrap), 1) ||
+      func(wrap && x === 0 ? w - 1 : x - 1, wrap && y === h - 1 ? 0 : y + 1, this.get(x - 1, y + 1, wrap), 2) ||
+      func(wrap && x === w - 1 ? 0 : x + 1, wrap && y === h - 1 ? 0 : y + 1, this.get(x + 1, y + 1, wrap), 3)
+    );
+  }
+
+  findAdj(x, y, wrap, func=null){
+    const {w, h} = this;
+
+    if(func === null){
+      func = wrap;
+      wrap = 0;
+    }
+
+    let dir = 0;
+    let wd;
+
+    const found = (
+      func(x, (wd = wrap && y === 0) ? h - 1 : y - 1, this.get(x, y - 1, wrap), dir++, wd) ||
+      func((wd = wrap && x === w - 1) ? 0 : x + 1, y, this.get(x + 1, y, wrap), dir++, wd) ||
+      func(x, (wd = wrap && y === h - 1) ? 0 : y + 1, this.get(x, y + 1, wrap), dir++, wd) ||
+      func((wd = wrap && x === 0) ? w - 1 : x - 1, y, this.get(x - 1, y, wrap), dir++, wd)
+    );
+
+    if(!found) return -1;
+    return dir - 1;
+  }
+
+  nav(v, dir, wrap=0){
+    const {w, h} = this;
+
+    switch(dir){
+      case 0: v.y--; break;
+      case 1: v.x++; break;
+      case 2: v.y++; break;
+      case 3: v.x--; break;
+    }
+
+    if(wrap){
+      if(v.x === -1) v.x = w - 1;
+      if(v.y === -1) v.y = h - 1;
+      if(v.x === w) v.x = 0;
+      if(v.y === h) v.y = 0;
+    }
+
+    return this.get(v.x, v.y, wrap);
+  }
+
+  path(xs, ys, wrap=null, all=null, func=null){
+    if(func === null){
+      if(all === null){
+        func = wrap;
+        wrap = 0;
+      }else{
+        func = all;
+      }
+      all = 0;
+    }
+
+    const queue = [[xs, ys, [], new O.Map2D(xs, ys, 0), '']];
+    const queued = O.obj();
+    const visited = O.obj();
+
+    let path = null;
+
+    queued[''] = new O.Map2D(xs, ys);
+
+    while(queue.length !== 0){
+      const [x, y, pp, cp, sp] = queue.shift();
+      const dirp = pp.length !== 0 ? O.last(pp) ^ 2 : -1;
+
+      queued[sp].remove(x, y);
+
+      if(!(sp in visited))
+        visited[sp] = new O.Map2D(x, y);
+      else
+        visited[sp].add(x, y);
+
+      if(this.adj(x, y, wrap, (x1, y1, d, dir, wrapped) => {
+        if(dir === dirp) return;
+
+        const start = x1 === xs && y1 === ys;
+
+        if(!start){
+          const len = cp.get(x1, y1);
+          if(len !== null && ((len ^ pp.length) & 1)) return;
+        }
+
+        const p = pp.slice();
+        const c = cp.clone();
+        const s = all ? sp + dir : wrap && (pp.length & 1) ? '1' : '';
+
+        p.push(dir);
+        c.add(x1, y1, p.length);
+
+        if(!start){
+          if((s in queued) && queued[s].has(x1, y1)) return;
+          if((s in visited) && visited[s].has(x1, y1)) return;
+        }
+
+        switch(func(x1, y1, d, x, y, dir, wrapped, p, c, cp)){
+          case 1:
+            if(start) break;
+            queue.push([x1, y1, p, c, s]);
+            if(!(s in queued))
+              queued[s] = new O.Map2D(x1, y1);
+            else
+              queued[s].add(x1, y1);
+            break;
+
+          case 2:
+            path = p;
+            return 1;
+            break;
+        }
+      })) break;
+    }
+
+    return path;
+  }
+
+  findPath(x, y, wrap, all, func){
+    this.path(x, y, wrap, all, func);
+  }
+
+  get(x, y, wrap=0){
+    const {w, h} = this;
+
+    if(!this.includes(x, y)){
+      if(!wrap) return null;
+      x = ((x % w) + w) % w;
+      y = ((y % h) + h) % h;
+    }
+
+    return this.d[y][x];
+  }
+
+  set(x, y, val, wrap=0){
+    const {w, h} = this;
+
+    if(!this.includes(x, y)){
+      if(!wrap) return null;
+      x = ((x % w) + w) % w;
+      y = ((y % h) + h) % h;
+    }
+
+    this.d[y][x] = val;
+  }
+
+  has(x, y){
+    return x >= 0 && y >= 0 && x < this.w && y < this.h;
+  }
+
+  includes(x, y){
+    return this.has(x, y);
+  }
+};
+
+class GridUI{
+  constructor(w, h, s, func=() => O.obj()){
+    this.func = func;
+    this.grid = new O.Grid(w, h, func);
+    this.scale = s;
+
+    const {g, w: iw, h: ih} = O.ceCanvas(1);
+    const [iwh, ihh] = [iw, ih].map(a => a / 2);
+
+    g.concaveMode = 1;
+
+    this.g = g;
+    this.iw = iw;
+    this.ih = ih;
+    this.iwh = iwh;
+    this.ihh = ihh;
+
+    this.transform();
+
+    this.keys = O.obj();
+    this.mbs = 0;
+    this.cur = new O.Vector;
+
+    this.funcs = {
+      draw: [],
+      frame: [],
+    };
+
+    this.wrap = 0;
+
+    this.ls = O.obj();
+    this.aels();
+  }
+
+  aels(){
+    const btnName = btn => 'lmr'[btn];
+    const {keys, cur} = this;
+
+    O.ael('keydown', evt => {
+      const key = evt.code;
+
+      keys[key] = 1;
+      this.emit(`k${key}`, cur.x, cur.y);
+    });
+
+    O.ael('keyup', evt => {
+      const key = evt.code;
+
+      keys[key] = 0;
+      this.emit(`ku${key}`, cur.x, cur.y);
+    });
+
+    O.ael('mousedown', evt => {
+      const btn = evt.button;
+
+      this.mbs |= 1 << btn;
+      this.updateCur(evt);
+
+      this.emit(`${btnName(btn)}mb`, cur.x, cur.y);
+    });
+
+    O.ael('mousemove', evt => {
+      const {mbs} = this;
+      const {x, y} = cur;
+
+      this.updateCur(evt);
+
+      if(cur.x !== x || cur.y !== y){
+        const dx = Math.sign(cur.x - x);
+        const dy = Math.sign(cur.y - y);
+
+        let xx = x, yy = y;
+        let dir = dx === 1 ? 1 : 3;
+        let prev;
+
+        while(xx !== cur.x){
+          prev = xx;
+          xx += dx;
+
+          this.emit('move', xx, yy);
+          for(let btn = 0; btn !== 3; btn++)
+            if(mbs & (1 << btn))
+              this.emit(`drag${btnName(btn)}`, prev, yy, xx, yy, dir);
+        }
+
+        dir = dy === 1 ? 2 : 0;
+
+        while(yy !== cur.y){
+          prev = yy;
+          yy += dy;
+
+          this.emit('move', xx, yy);
+          for(let btn = 0; btn !== 3; btn++)
+            if(mbs & (1 << btn))
+              this.emit(`drag${btnName(btn)}`, xx, prev, xx, yy, dir);
+        }
+      }
+    });
+
+    O.ael('mouseup', evt => {
+      const btn = evt.button;
+
+      this.mbs &= ~(1 << btn);
+      this.updateCur(evt);
+
+      this.emit(`${btnName(btn)}mbu`, cur.x, cur.y);
+    });
+
+    O.ael('blur', evt => {
+      this.mbs = 0;
+    });
+
+    O.ael('contextmenu', evt => {
+      evt.preventDefault();
+      evt.stopPropagation();
+    });
+  }
+
+  updateCur(evt){
+    const {clientX: x, clientY: y} = evt;
+    const {scale, g, cur} = this;
+
+    cur.x = Math.floor((x - g.tx) / scale);
+    cur.y = Math.floor((y - g.ty) / scale);
+  }
+
+  transform(){
+    const {grid, g} = this;
+
+    g.resetTransform();
+    g.translate(this.iwh, this.ihh);
+    g.scale(this.scale);
+    g.translate(-grid.w / 2, -grid.h / 2);
+  }
+
+  tick(){
+    this.emit('tick');
+  }
+
+  draw(){
+    const {grid, g, funcs, wrap} = this;
+
+    g.clearCanvas('darkgray');
+
+    for(const drawf of funcs.draw){
+      g.save();
+      grid.iter((x, y, d) => {
+        g.translate(x, y);
+        drawf(g, d, x, y);
+        g.restore();
+      });
+    }
+
+    for(const framef of funcs.frame){
+      g.beginPath();
+
+      grid.iter((x, y, d1) => {
+        grid.adj(x, y, wrap, (xx, yy, d2, dir) => {
+          if(dir === 3 && x !== 0) return;
+          if(dir === 0 && y !== 0) return;
+          if(!framef(g, d1, d2, x, y, dir)) return;
+
+          switch(dir){
+            case 0:
+              g.moveTo(x, y);
+              g.lineTo(x + 1, y);
+              break;
+
+            case 1:
+              g.moveTo(x + 1, y);
+              g.lineTo(x + 1, y + 1);
+              break;
+
+            case 2:
+              g.moveTo(x, y + 1);
+              g.lineTo(x + 1, y + 1);
+              break;
+
+            case 3:
+              g.moveTo(x, y);
+              g.lineTo(x, y + 1);
+              break;
+          }
+        });
+      });
+
+      g.stroke();
+    }
+  }
+
+  render(){
+    this.tick();
+    this.draw();
+
+    O.raf(this.render.bind(this));
+  }
+
+  removeListener(type, func){
+    const {ls} = this;
+    if(!(type in ls)) return;
+    ls[type].remove(func);
+  }
+
+  removeAllListeners(type){
+    delete this.ls[type];
+  }
+
+  on(type, func){
+    if(type === 'draw'){
+      this.funcs.draw.push(func);
+      return;
+    }
+
+    if(type === 'frame'){
+      this.funcs.frame.push(func);
+      return;
+    }
+
+    const {ls} = this;
+    if(!(type in ls)) ls[type] = new Set();
+    ls[type].add(func);
+    return this;
+  }
+
+  emit(type, ...args){
+    const {ls} = this;
+    if(!(type in ls)) return;
+    for(const func of ls[type])
+      func(...args);
+  }
+};
+
+class Map2D{
+  constructor(x=null, y=null, val=1){
+    this.d = O.obj();
+
+    if(x !== null)
+      this.add(x, y, val);
+  }
+
+  reset(x=null, y=null, val=1){
+    this.d = O.obj();
+
+    if(x !== null)
+      this.add(x, y, val);
+  }
+
+  empty(){
+    this.reset();
+  }
+
+  clone(){
+    const map = new O.Map2D();
+    this.iter((x, y, d) => map.add(x, y, d));
+    return map;
+  }
+
+  eq(map){
+    if(this.some((x, y) => !map.has(x, y))) return 0;
+    if(map.some((x, y) => !this.has(x, y))) return 0;
+    return 1;
+  }
+
+  neq(map){
+    return !this.eq(map);
+  }
+
+  get(x, y, defaultVal=null){
+    if(!this.has(x, y)) return defaultVal;
+    return this.d[y][x];
+  }
+
+  set(x, y, val=1){
+    var {d} = this;
+
+    if(!(y in d)) d[y] = O.obj();
+    d[y][x] = val;
+
+    return this;
+  }
+
+  add(x, y, val=1){
+    return this.set(x, y, val);
+  }
+
+  remove(x, y){
+    var {d} = this;
+
+    if(!(y in d)) return;
+    delete d[y][x];
+  }
+
+  delete(x, y){
+    this.remove(x, y);
+  }
+
+  del(x, y){
+    this.remove(x, y);
+  }
+
+  has(x, y){
+    var {d} = this;
+
+    if(!(y in d)) return 0;
+    if(!(x in d[y])) return 0;
+    return 1;
+  }
+
+  iter(func){
+    const {d} = this;
+
+    for(let y in d)
+      for(let x in d[y |= 0])
+        func(x |= 0, y, d[y][x]);
+  }
+
+  iterate(func){
+    this.iter(func);
+  }
+
+  some(func){
+    const {d} = this;
+
+    for(let y in d)
+      for(let x in d[y |= 0])
+        if(func(x |= 0, y, d[y][x]))
+          return;
+  }
+
+  find(v, func){
+    const {d} = this;
+
+    for(let y in d){
+      for(let x in d[y |= 0]){
+        const val = d[y][x |= 0];
+
+        if(func(x, y, val)){
+          v.x = x;
+          v.y = y;
+
+          return val;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  getArr(){
+    const arr = [];
+    this.iter((x, y) => arr.push([x, y]));
+    return arr;
+  }
+
+  *[Symbol.iterator](){
+    const {d} = this;
+
+    for(let y in d)
+      for(let x in d[y |= 0])
+        yield [x |= 0, y, d[y][x]];
+  }
+};
+
+class Map3D{
+  constructor(x=null, y=null, z = null, val=1){
+    this.d = O.obj();
+
+    if(x !== null)
+      this.add(x, y, z, val);
+  }
+
+  get(x, y, z){
+    if(!this.has(x, y, z)) return null;
+    return this.d[z][y][x];
+  }
+
+  set(x, y, z, val=1){
+    var {d} = this;
+
+    if(!(z in d)) d[z] = O.obj();
+    d = d[z];
+
+    if(!(y in d)) d[y] = O.obj();
+    d[y][x] = val;
+  }
+
+  add(x, y, z, val=1){
+    this.set(x, y, z, val);
+  }
+
+  remove(x, y, z){
+    var {d} = this;
+
+    if(!(z in d)) return;
+    d = d[z];
+
+    if(!(y in d)) return;
+    delete d[y][x];
+  }
+
+  has(x, y, z){
+    var {d} = this;
+
+    if(!(z in d)) return 0;
+    d = d[z];
+
+    
+    if(!(y in d)) return 0;
+    return d[y][x];
+  }
+
+  getArr(){
+    var {d} = this;
+
+    var arr = [];
+
+    O.keys(d).forEach(z => {
+      z |= 0;
+      O.keys(d = d[z]).forEach(y => {
+        y |= 0;
+        O.keys(d[y]).forEach(x => {
+          x |= 0;
+          arr.push([x, y, z]);
+        });
+      });
+    });
+
+    return arr;
+  }
+};
+
+class CoordsColle{
+  constructor(x=null, y=null){
+    this.map = new O.Map2D();
+    this.arr = [];
+
+    if(x !== null)
+      this.add(x, y);
+  }
+
+  reset(x=null, y=null){
+    this.map.reset();
+    this.arr.length = 0;
+
+    if(x !== null)
+      this.add(x, y);
+  }
+
+  empty(){
+    this.reset();
+  }
+
+  len(){
+    return this.arr.length >> 1;
+  }
+
+  isEmpty(){
+    return this.len() === 0;
+  }
+
+  eq(cc){
+    if(this.len() !== cc.len()) return 0;
+    return !this.some((x, y) => !cc.has(x, y));
+  }
+
+  neq(cc){
+    return !this.eq(cc);
+  }
+
+  has(x, y){
+    return this.map.has(x, y);
+  }
+
+  add(x, y, top=1){
+    const {map, arr} = this;
+
+    if(!map.has(x, y)){
+      map.add(x, y, arr.length);
+      arr.push(x, y);
+      return;
+    }
+
+    if(!top) return;
+
+    const i = map.get(x, y);
+    const j = arr.length - 2;
+    if(i === j) return;
+
+    const x1 = arr[j];
+    const y1 = arr[j + 1];
+
+    map.set(x, y, j);
+    map.set(x1, y1, i);
+    arr[j] = x, arr[j + 1] = y;
+    arr[i] = x1, arr[i + 1] = y1;
+  }
+
+  push(x, y){
+    this.add(x, y);
+  }
+
+  remove(x, y){
+    const {map, arr} = this;
+    if(!map.has(x, y)) return;
+
+    const i = map.get(x, y);
+    this.removeByIndex(i);
+  }
+
+  delete(x, y){
+    this.remove(x, y);
+  }
+
+  del(x, y){
+    this.remove(x, y);
+  }
+
+  removeByIndex(i){
+    const {map, arr} = this;
+    const j = arr.length - 2;
+
+    const x = arr[i];
+    const y = arr[i + 1];
+    map.remove(x, y);
+
+    if(i !== j){
+      const x1 = arr[j];
+      const y1 = arr[j + 1];
+
+      map.set(x1, y1, i);
+      arr[i] = x1, arr[i + 1] = y1;
+    }
+
+    arr.length = j;
+  }
+
+  pop(v){
+    return this.getByIndex(v, this.arr.length - 2, 1);
+  }
+
+  rand(v, remove=0){
+    return this.getByIndex(v, O.rand(this.arr.length) & ~1, remove);
+  }
+
+  getByIndex(v, i, remove=0){
+    const {arr} = this;
+    if((i & 1) || i < 0 || i >= arr.length) return null;
+
+    v.x = arr[i];
+    v.y = arr[i + 1];
+
+    if(remove)
+      this.removeByIndex(i);
+
+    return v;
+  }
+
+  iter(func){ return this.map.iter(func); }
+  some(func){ return this.map.some(func); }
+  find(v, func){ return this.map.find(v, func); }
+  [Symbol.iterator](){ return this.map[Symbol.iterator](); }
+};
+
+class EnhancedRenderingContext{
+  constructor(g){
+    this.g = g;
+    this.canvas = g.canvas;
+
+    this.w = this.canvas.width;
+    this.h = this.canvas.height;
+
+    this.s = 1;
+    this.tx = 0;
+    this.ty = 0;
+
+    this.rtx = 0;
+    this.rty = 0;
+    this.rot = 0;
+    this.rcos = 0;
+    this.rsin = 0;
+
+    this.fontSize = 32;
+    this.fontScale = 1;
+    this.fontFamily = 'Arial';
+    this.fontModifiers = '';
+
+    this.pointsQueue = [];
+    this.arcsQueue = [];
+
+    this.concaveMode = false;
+
+    [
+      'fillStyle',
+      'strokeStyle',
+      'globalAlpha',
+      'textAlign',
+      'textBaseline',
+      'lineWidth',
+      'globalCompositeOperation',
+      'lineCap',
+      'lineJoin',
+    ].forEach(prop => {
+      Object.defineProperty(this, prop, {
+        set: val => g[prop] = val,
+        get: () => g[prop],
+      });
+    });
+
+    [
+      'clearRect',
+      'measureText',
+    ].forEach(prop => this[prop] = g[prop].bind(g));
+
+    this.fillStyle = 'white';
+    this.strokeStyle = 'black';
+    this.textAlign = 'center';
+    this.textBaseline = 'middle';
+
+    this.drawImage = g.drawImage.bind(g);
+
+    this.clearCanvas();
+  }
+
+  clearCanvas(col=null){
+    var {canvas, g} = this;
+    if(col !== null) g.fillStyle = col;
+    g.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  createLinearGradient(...params){
+    return this.g.createLinearGradient(...params);
+  }
+
+  beginPath(){
+    this.pointsQueue.length = 0;
+    this.arcsQueue.length = 0;
+  }
+
+  closePath(){
+    var q = this.pointsQueue;
+    q.push(1, q[1], q[2]);
+  }
+
+  fill(){
+    this.finishLine(true);
+    this.g.fill();
+  }
+
+  stroke(){
+    this.finishLine(false);
+    this.g.stroke();
+  }
+
+  finishLine(fillMode){
+    var {g} = this;
+    var q = this.pointsQueue;
+    var aq = this.arcsQueue;
+
+    var x1 = q[1];
+    var y1 = q[2];
+
+    var i = 0;
+    var j = 0;
+
+    var concaveMode = this.concaveMode && !fillMode;
+    var hasArcs = aq.length !== 0;
+
+    if(concaveMode){
+      var fillStyle = g.fillStyle;
+      g.fillStyle = g.strokeStyle;
+    }
+
+    g.beginPath();
+
+    do{
+      if(j < aq.length && aq[j] === i){
+        g.arc(aq[j + 1], aq[j + 2], aq[j + 3], aq[j + 4], aq[j + 5], aq[j + 6]);
+        j += 7;
+      }
+
+      var type = q[i];
+
+      var x2 = q[i + 1];
+      var y2 = q[i + 2];
+
+      if(fillMode){
+        if(Math.abs(x1 - x2) === 1) x2 = x1;
+        if(Math.abs(y1 - y2) === 1) y2 = y1;
+      }
+
+      if(!type){
+        x1 = x2;
+        y1 = y2;
+        continue;
+      }
+
+      if(fillMode){
+        g.lineTo(x2, y2);
+      }else{
+        var dx = y1 !== y2 ? .5 : 0;
+        var dy = x1 !== x2 ? .5 : 0;
+
+        g.moveTo(x1 + dx, y1 + dy);
+        g.lineTo(x2 + dx, y2 + dy);
+
+        if(concaveMode){
+          if(x1 < x2 || y1 < y2)
+            g.fillRect(x2, y2, 1, 1);
+        }
+      }
+
+      x1 = x2;
+      y1 = y2;
+    }while((i += 3) < q.length);
+
+    if(concaveMode)
+      g.fillStyle = fillStyle;
+  }
+
+  resetTransform(resetScale=1){
+    if(resetScale)
+      this.s = 1;
+    
+    this.tx = 0;
+    this.ty = 0;
+    this.rot = 0;
+
+    this.g.resetTransform();
+  }
+
+  scale(s){
+    this.s *= s;
+  }
+
+  translate(x, y){
+    this.tx += this.s * x;
+    this.ty += this.s * y;
+  }
+
+  rotate(x, y, angle){
+    this.rot = angle;
+
+    if(angle){
+      this.rtx = x;
+      this.rty = y;
+      this.rcos = Math.cos(angle);
+      this.rsin = -Math.sin(angle);
+    }
+  }
+
+  save(rot=0){
+    this.sPrev = this.s;
+    this.txPrev = this.tx;
+    this.tyPrev = this.ty;
+
+    if(rot){
+      this.rtxPrev = this.rtx;
+      this.rtyPrev = this.rty;
+      this.rotPrev = this.rot;
+      this.rcosPrev = this.rcos;
+      this.rsinPrev = this.rsin;
+    }
+  }
+
+  restore(rot=0){
+    this.s = this.sPrev;
+    this.tx = this.txPrev;
+    this.ty = this.tyPrev;
+
+    if(rot){
+      this.rtx = this.rtxPrev;
+      this.rty = this.rtyPrev;
+      this.rot = this.rotPrev;
+      this.rcos = this.rcosPrev;
+      this.rsin = this.rsinPrev;
+    }
+  }
+
+  rect(x, y, w, h){
+    var s1 = 1 / this.s;
+
+    this.moveTo(x, y);
+    this.lineTo(x + w + s1, y);
+
+    this.moveTo(x + w, y);
+    this.lineTo(x + w, y + h + s1);
+
+    this.moveTo(x + w + s1, y + h);
+    this.lineTo(x, y + h);
+
+    this.moveTo(x, y + h + s1);
+    this.lineTo(x, y);
+  }
+
+  fillRect(x, y, w, h){
+    if(this.rot){
+      this.g.beginPath();
+      this.rect(x, y, w, h);
+      this.fill();
+      return;
+    }
+
+    this.g.fillRect(Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty), Math.round(w * this.s) + 1, Math.round(h * this.s) + 1);
+  }
+
+  moveTo(x, y){
+    if(this.rot){
+      var xx = x - this.rtx;
+      var yy = y - this.rty;
+
+      x = this.rtx + xx * this.rcos - yy * this.rsin;
+      y = this.rty + yy * this.rcos + xx * this.rsin;
+    }
+
+    this.pointsQueue.push(0, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
+  }
+
+  lineTo(x, y){
+    if(this.rot){
+      var xx = x - this.rtx;
+      var yy = y - this.rty;
+
+      x = this.rtx + xx * this.rcos - yy * this.rsin;
+      y = this.rty + yy * this.rcos + xx * this.rsin;
+    }
+
+    this.pointsQueue.push(1, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
+  }
+
+  arc(x, y, r, a1, a2, acw){
+    if(this.rot){
+      var xx = x - this.rtx;
+      var yy = y - this.rty;
+
+      x = this.rtx + xx * this.rcos - yy * this.rsin;
+      y = this.rty + yy * this.rcos + xx * this.rsin;
+
+      a1 = (a1 - this.rot) % O.pi2;
+      a2 = (a2 - this.rot) % O.pi2;
+    }
+
+    var xx = x * this.s + this.tx + .5;
+    var yy = y * this.s + this.ty + .5;
+    var rr = r * this.s;
+    this.arcsQueue.push(this.pointsQueue.length, xx, yy, rr, a1, a2, acw);
+
+    xx += Math.cos(a2) * rr;
+    yy += Math.sin(a2) * rr;
+    this.pointsQueue.push(0, xx, yy);
+  }
+
+  fillText(text, x, y){
+    if(this.rot){
+      var xx = x - this.rtx;
+      var yy = y - this.rty;
+
+      x = this.rtx + xx * this.rcos - yy * this.rsin;
+      y = this.rty + yy * this.rcos + xx * this.rsin;
+    }
+
+    this.g.fillText(text, Math.round(x * this.s + this.tx) + 1, Math.round(y * this.s + this.ty) + 1);
+  }
+
+  strokeText(text, x, y){
+    if(this.rot){
+      var xx = x - this.rtx;
+      var yy = y - this.rty;
+
+      x = this.rtx + xx * this.rcos - yy * this.rsin;
+      y = this.rty + yy * this.rcos + xx * this.rsin;
+    }
+
+    this.g.strokeText(text, Math.round(x * this.s + this.tx) + 1, Math.round(y * this.s + this.ty) + 1);
+  }
+
+  updateFont(){
+    var modifiers = this.fontModifiers;
+    var strDelimiter = modifiers.length !== 0 ? ' ' : '';
+
+    this.g.font = `${modifiers}${strDelimiter}${this.fontSize * this.fontScale}px "${this.fontFamily}"`;
+  }
+
+  font(size){
+    this.fontSize = size;
+    this.updateFont();
+  }
+
+  scaleFont(scale){
+    this.fontScale = scale;
+    this.updateFont();
+  }
+
+  setFontModifiers(modifiers){
+    this.fontModifiers = modifiers;
+    this.updateFont();
+  }
+
+  removeFontModifiers(){
+    this.fontModifiers = '';
+    this.updateFont();
+  }
+
+  drawTube(x, y, dirs, size, round=0){
+    const g = this;
+
+    const s1 = (1 - size) / 2;
+    const s2 = 1 - s1;
+
+    const radius = Math.min(size, .5);
+
+    const p1 = (1 - Math.sqrt(radius * radius * 4 - size * size)) / 2;
+    const p2 = 1 - p1;
+
+    const phi1 = (1.9 - size / (radius * 4)) * O.pi;
+    const phi2 = phi1 + O.pi2 - size / radius * O.pih;
+
+    let dphi = 0;
+    let foundArc = round;
+
+    g.beginPath();
+
+    drawingBlock: {
+      if(round === 1){
+        switch(dirs){
+          case 0:
+            g.arc(x + .5, y + .5, radius, 0, O.pi2);
+            break;
+
+          case 1:
+            g.moveTo(x + s2, y + p1);
+            g.lineTo(x + s2, y);
+            g.lineTo(x + s1, y);
+            g.lineTo(x + s1, y + p1);
+            break;
+
+          case 2:
+            dphi = O.pi2 - (O.pi + O.pih);
+            g.moveTo(x + p2, y + s2);
+            g.lineTo(x + 1, y + s2);
+            g.lineTo(x + 1, y + s1);
+            g.lineTo(x + p2, y + s1);
+            break;
+
+          case 4:
+            dphi = O.pi;
+            g.moveTo(x + s1, y + p2);
+            g.lineTo(x + s1, y + 1);
+            g.lineTo(x + s2, y + 1);
+            g.lineTo(x + s2, y + p2);
+            break;
+
+          case 8:
+            dphi = O.pi2 - O.pih;
+            g.moveTo(x + p1, y + s1);
+            g.lineTo(x, y + s1);
+            g.lineTo(x, y + s2);
+            g.lineTo(x + p1, y + s2);
+            break;
+
+          default:
+            foundArc = 0;
+            break;
+        }
+
+        if(foundArc)
+          break drawingBlock;
+      }
+
+      g.moveTo(x + s1, y + s1);
+
+      if(dirs & 1){
+        g.lineTo(x + s1, y);
+        g.lineTo(x + s2, y);
+      }
+      g.lineTo(x + s2, y + s1);
+
+      if(dirs & 2){
+        g.lineTo(x + 1, y + s1);
+        g.lineTo(x + 1, y + s2);
+      }
+      g.lineTo(x + s2, y + s2);
+
+      if(dirs & 4){
+        g.lineTo(x + s2, y + 1);
+        g.lineTo(x + s1, y + 1);
+      }
+      g.lineTo(x + s1, y + s2);
+
+      if(dirs & 8){
+        g.lineTo(x, y + s2);
+        g.lineTo(x, y + s1);
+      }
+    }
+
+    if(foundArc){
+      if(dirs !== 0)
+        g.arc(x + .5, y + .5, radius, phi2 + dphi, phi1 + dphi, 1);
+
+      g.fill();
+      g.stroke();
+    }else{
+      g.closePath();
+      g.fill();
+      g.stroke();
+
+      const col = g.strokeStyle;
+      const s = 1 / g.s;
+
+      g.strokeStyle = g.fillStyle;
+      g.beginPath();
+
+      if(dirs & 1){
+        g.moveTo(x + s1 + s, y);
+        g.lineTo(x + s2 - s, y);
+      }
+
+      if(dirs & 2){
+        g.moveTo(x + 1, y + s1 + s);
+        g.lineTo(x + 1, y + s2 - s);
+      }
+
+      if(dirs & 4){
+        g.moveTo(x + s2 - s, y + 1);
+        g.lineTo(x + s1 + s, y + 1);
+      }
+
+      if(dirs & 8){
+        g.moveTo(x, y + s2);
+        g.lineTo(x, y + s1 + s);
+      }
+
+      g.stroke();
+      g.strokeStyle = col;
+    }
+  }
+};
+
+class Buffer extends Uint8Array{
+  constructor(...params){
+    if(params.length === 1 && typeof params[0] === 'string')
+      params[0] = [...params[0]].map(a => O.cc(a));
+
+    super(...params);
+  }
+
+  static alloc(size){
+    return new O.Buffer(size);
+  }
+
+  static from(data, encoding){
+    if(data.length === 0)
+      return O.Buffer.alloc(0);
+
+    switch(encoding){
+      case 'hex':
+        data = data.match(/[0-9a-f]{2}/gi).map(a => parseInt(a, 16));
+        return new O.Buffer(data);
+        break;
+
+      default:
+        return new O.Buffer(data);
+        break;
+    }
+  }
+
+  static concat(arr){
+    arr = arr.reduce((concatenated, buff) => {
+      return [...concatenated, ...buff];
+    }, []);
+
+    return new O.Buffer(arr);
+  }
+
+  equals(buf){
+    const len = this.length;
+    if(buf.length !== len) return false;
+
+    for(let i = 0; i !== len; i++)
+      if(buf[i] !== this[i]) return false;
+
+    return true;
+  }
+
+  readUInt32BE(offset){
+    var val;
+
+    val = this[offset] * 2 ** 24;
+    val += this[offset + 1] * 2 ** 16;
+    val += this[offset + 2] * 2 ** 8;
+    val += this[offset + 3];
+
+    return val;
+  }
+
+  writeUInt32BE(val, offset){
+    this[offset] = val / 2 ** 24;
+    this[offset + 1] = val / 2 ** 16;
+    this[offset + 2] = val / 2 ** 8;
+    this[offset + 3] = val;
+  }
+
+  writeInt32BE(val, offset){
+    this[offset] = val >> 24;
+    this[offset + 1] = val >> 16;
+    this[offset + 2] = val >> 8;
+    this[offset + 3] = val;
+  }
+
+  toString(encoding){
+    var arr = [...this];
+
+    switch(encoding){
+      case 'hex':
+        return arr.map(a => a.toString(16).padStart(2, '0')).join('');
+        break;
+
+      default:
+        return arr.map(a => String.fromCharCode(a)).join('');
+        break;
+    }
+  }
+};
+
+class Storage{
+  constructor(obj=null, path=null, prefix=null){
+    if(obj === null) obj = O.obj();
+
+    this.obj = obj;
+    this.prefix = prefix;
+
+    if(path !== null){
+      var obj1 = this.get(path);
+
+      if(!this.isObj(obj1)){
+        obj1 = O.obj();
+        this.set(path, obj1);
+      }
+
+      this.obj = obj1;
+    }
+  }
+
+  reset(){
+    const {obj} = this;
+
+    for(var key of O.keys(obj))
+      if(this.isOwnKey(key))
+        delete obj[key];
+  }
+
+  has(path){
+    var {obj} = this;
+
+    return this.iterPath(path, key => {
+      if(!(key in obj)) return;
+      obj = obj[key];
+      return 1;
+    });
+  }
+
+  get(path, defaultVal=null){
+    var {obj} = this;
+
+    var found = this.iterPath(path, key => {
+      if(!(key in obj)) return;
+      obj = obj[key];
+      return 1;
+    });
+
+    if(!found) return defaultVal;
+    return obj;
+  }
+
+  set(path, val){
+    var {obj} = this;
+    var last;
+
+    this.iterPath(path, (key, index, arr) => {
+      if(index === arr.length - 1){
+        last = key;
+        return 1;
+      }
+
+      if(!this.isObj(obj[key])) obj[key] = O.obj();
+      obj = obj[key];
+      return 1;
+    });
+
+    obj[last] = val;
+  }
+
+  remove(path){
+    var {obj} = this;
+    var last;
+
+    var found = this.iterPath(path, (key, index, arr) => {
+      if(index === arr.length - 1){
+        last = key;
+        return 1;
+      }
+
+      if(!(key in obj)) return;
+      obj = obj[key];
+      return 1;
+    });
+
+    if(!found) return;
+    delete obj[last];
+  }
+
+  iterPath(path, func){
+    return path.split('.').every((key, index, arr) => {
+      if(index === 0) key = this.format(key);
+      return func(key, index, arr);
+    });
+  }
+
+  format(key){
+    const {prefix} = this;
+
+    if(prefix === null) return key;
+    return `${prefix}_${key}`;
+  }
+
+  isOwnKey(key){
+    const {prefix} = this;
+
+    if(prefix === null) return 1;
+    return key.startsWith(`${prefix}_`);
+  }
+
+  isObj(val){
+    return typeof val === 'object' && val !== null;
+  }
+};
+
+class IO{
+  constructor(input='', checksum=0, pad=0){
+    let buf = O.Buffer.from(input);
+    if(checksum) buf = IO.unlock(buf, 1);
+
+    this.input = buf
+    this.output = O.Buffer.alloc(1);
+
+    this.pad = pad;
+
+    this.inputIndex = pad ? 0 : 1;
+    this.outputIndex = 0;
+    this.byte = 0;
+  }
+
+  static name(){ return 'Standard'; }
+  static isBit(){ return 0; }
+
+  static lock(buf, sameBuf=0){
+    if(!sameBuf) buf = O.Buffer.from(buf);
+
+    const cs = O.sha256(buf);
+    IO.xor(buf, cs, 1);
+    buf = O.Buffer.concat([buf, cs]);
+
+    return buf;
+  }
+
+  static unlock(buf, sameBuf=0){
+    if(!sameBuf) buf = O.Buffer.from(buf);
+    const err = () => { throw new TypeError('Invalid checksum'); };
+
+    const len = buf.length;
+    if(len < 32) err();
+
+    const cs = O.Buffer.from(buf.slice(len - 32));
+
+    buf = O.Buffer.from(buf.slice(0, len - 32));
+    IO.xor(buf, cs, 1);
+
+    if(!O.sha256(buf).equals(cs)) err();
+
+    return buf;
+  }
+
+  static xor(buf, hash, sameBuf=0){
+    if(!sameBuf) buf = O.Buffer.from(buf);
+    const len = buf.length;
+
+    for(let i = 0, j = 0; i !== len; i++, j++){
+      buf[i] ^= hash[j];
+
+      if(j === 32){
+        hash = O.sha256(hash);
+        j = 0;
+      }
+    }
+
+    return buf;
+  }
+
+  hasMore(){
+    return (this.inputIndex >> 4) < this.input.length;
+  }
+
+  read(){
+    const {input} = this;
+    const i = this.inputIndex;
+
+    if((i >> 4) >= input.length) return 0;
+    this.inputIndex += this.pad ? 1 : 2;
+
+    if((i & 1) === 0) return 1;
+    return input[i >> 4] & (1 << ((i >> 1) & 7)) ? 1 : 0;
+  }
+
+  write(bit){
+    this.byte |= bit << (this.outputIndex++ & 7);
+    if((this.outputIndex & 7) === 0) this.addByte();
+  }
+
+  addByte(){
+    const len = this.outputIndex - 1 >> 3;
+
+    if(len === this.output.length){
+      const buf = O.Buffer.alloc(len);
+      this.output = O.Buffer.concat([this.output, buf]);
+    }
+
+    this.output[len] = this.byte;
+    this.byte = 0;
+  }
+
+  getOutput(checksum=0, encoding=null){
+    if((this.outputIndex & 7) !== 0) this.addByte();
+
+    const len = Math.ceil(this.outputIndex / 8);
+    let buf = O.Buffer.from(this.output.slice(0, len));
+    if(checksum) buf = IO.lock(buf, 1);
+
+    if(encoding !== null) buf = buf.toString(encoding);
+    return buf;
+  }
+};
+
+class Serializer extends IO{
+  constructor(buf, checksum=0){
+    super(buf, checksum);
+  }
+
+  write(num, max=1){
+    num |= 0;
+    max |= 0;
+    if(max === 0) return;
+
+    let mask = 1 << 31 - Math.clz32(max);
+    let limit = 1;
+
+    while(mask !== 0){
+      if(!limit || (max & mask)){
+        let bit = num & mask ? 1 : 0;
+        super.write(bit);
+        if(!bit) limit = 0;
+      }
+      mask >>= 1;
+    }
+
+    return num;
+  }
+
+  read(max=1){
+    max |= 0;
+    if(max === 0) return 0;
+
+    let mask = 1 << 31 - Math.clz32(max);
+    let limit = 1;
+    let num = 0;
+
+    while(mask !== 0){
+      num <<= 1;
+      if(!limit || (max & mask)){
+        let bit = super.read();
+        num |= bit;
+        if(!bit) limit = 0;
+      }
+      mask >>= 1;
+    }
+
+    return num;
+  }
+
+  writeInt(num){
+    num = (num | 0) + 1;
+
+    while(num !== 1){
+      super.write(1);
+      super.write(num & 1);
+      num >>= 1;
+    }
+
+    super.write(0);
+  }
+
+  readInt(){
+    let num = 0;
+    let mask = 1;
+
+    while(super.read()){
+      if(super.read())
+        num |= mask;
+      mask <<= 1;
+    }
+
+    return (num | mask) - 1;
+  }
+
+  writeStr(str){
+    this.writeInt(str.length);
+
+    for(const char of str)
+      this.write(O.cc(char), 255);
+  }
+
+  readStr(){
+    const len = this.readInt();
+    let str = '';
+
+    for(let i = 0; i !== len; i++)
+      str += O.sfcc(this.read(255));
+
+    return str;
+  }
+
+  writeBuf(buf){
+    this.writeInt(buf.length);
+
+    for(const byte of buf)
+      this.write(buf, 255);
+  }
+
+  readBuf(){
+    const len = this.readInt();
+    const buf = O.Buffer.alloc(len);
+
+    for(let i = 0; i !== len; i++)
+      buf[i] = this.read(255);
+
+    return buf;
+  }
+
+  getOutput(checksum=0, encoding=null, trim=1){
+    let buf = super.getOutput(checksum);
+    let len = buf.length;
+
+    if(trim && len !== 0 && buf[len - 1] === 0){
+      let i = len - 1;
+      for(; i !== -1; i--)
+        if(buf[i] !== 0) break;
+      buf = O.Buffer.from(buf.slice(0, i + 1));
+    }
+
+    if(encoding !== null) buf = buf.toString(encoding);
+    return buf;
+  }
+};
+
 const O = {
   global: null,
   isNode: null,
   isBrowser: null,
+  isElectron: null,
+  crypto: null,
 
   doc: document,
   head: document.head,
   body: document.body,
-
-  /*
-    Constants
-  */
 
   pi: Math.PI,
   pi2: Math.PI * 2,
   pih: Math.PI / 2,
   pi32: Math.PI * 3 / 2,
 
-  /*
-    Symbols
-  */
-
   static: Symbol('static'),
-
-  /*
-    Project
-  */
-
   project: null,
-
-  /*
-    Cache
-  */
-
-  moduleCache: null,
-
-  /*
-    Other parameters
-  */
-
+  storage: null,
   enhancedRNG: 0,
+  fastSha256: 1,
+  rseed: null,
 
-  /*
-    Main functions
-  */
+  module: {
+    cache: null,
+    remaining: 0,
+  },
+
+  // Classes
+
+  Vector,
+  Color,
+  Grid,
+  GridUI,
+  Map2D,
+  Map3D,
+  CoordsColle,
+  EnhancedRenderingContext,
+  Buffer,
+  Storage,
+  IO,
+  Serializer,
 
   init(loadProject=1){
-    var global = O.global = new Function('return this;')();
-    var env = String(global);
+    O.storage = O.obj();
 
-    switch(env){
-      case '[object Window]': env = 'browser'; break;
-      case '[object global]': env = 'node'; break;
-    }
+    var global = O.global = new Function('return this;')();
+    var env = 'navigator' in global ? 'browser' : 'node';
 
     O.env = env;
 
     var isBrowser = O.isBrowser = env === 'browser';
     var isNode = O.isNode = env === 'node';
+    var isElectron = O.isElectron = isBrowser && navigator.userAgent.includes('Electron');
 
     if(isBrowser){
       if(global.navigator.vendor !== 'Google Inc.')
         return O.error('Please use Chrome.');
     }
 
+    if(isNode){
+      O.crypto = require('crypto');
+      O.Buffer = global.Buffer;
+    }
+
     if(!global.isConsoleOverriden)
       O.overrideConsole();
 
-    O.moduleCache = O.obj();
-
-    O.enhancedRNG = 1;
-    O.randState = O.Buffer.from(O.ca(32, () => Math.random() * 256));
-    O.random();
-    O.enhancedRNG = 0;
+    O.module.cache = O.obj();
 
     if(loadProject){
       O.project = O.urlParam('project');
@@ -105,7 +2069,7 @@ const O = {
           });
         });
       }else{
-        O.req(`/projects/${O.project}/main`);
+        O.req(`/projects/${O.project}/main`).catch(O.error);
       }
     }
   },
@@ -128,7 +2092,7 @@ const O = {
       }
 
       if(isNode){
-        var indentStr = '  '.repeat(indent);
+        var indentStr = ' '.repeat(indent << 1);
         var str = O.inspect(args);
 
         str = O.sanl(str).map(line => {
@@ -251,7 +2215,7 @@ const O = {
   },
 
   ce(parent, tag, classNames=null){
-    var elem = O.doc.createElement(tag);
+    const elem = O.doc.createElement(tag);
 
     if(parent !== null)
       parent.appendChild(elem);
@@ -372,11 +2336,13 @@ const O = {
 
     xhr.onreadystatechange = () => {
       if(xhr.readyState === 4){
-        if(isBinary){
+        if(xhr.status === 200 && O.module.remaining !== 0)
+          O.module.remaining--;
+
+        if(isBinary)
           cb(xhr.status, O.Buffer.from(xhr.response));
-        }else{
+        else
           cb(xhr.status, xhr.responseText);
-        }
       }
     };
 
@@ -396,18 +2362,6 @@ const O = {
     });
   },
 
-  async rfCache(...args){
-    var cache = O.moduleCache;
-    var path = args[0];
-
-    if(path in cache) return cache[path];
-
-    var data = await O.rfAsync(...args);
-    if(data === null) return null;
-
-    return data;
-  },
-
   rfLocal(file, isBinary, cb=null){
     if(cb === null){
       cb = isBinary;
@@ -418,9 +2372,10 @@ const O = {
   },
 
   async req(path){
-    var cache = O.moduleCache;
-    var pathOrig = path;
-    var script;
+    const cache = O.module.cache;
+    const pathOrig = path;
+
+    let script;
 
     if(path in cache) return cache[path];
     
@@ -523,11 +2478,11 @@ const O = {
   },
 
   sanl(str){
-    return str.split(/\r\n|\r|\n/g);
+    return String(str).split(/\r\n|\r|\n/g);
   },
 
   sanll(str){
-    return str.split(/\r\n\r\n|\r\r|\n\n/g);
+    return String(str).split(/\r\n\r\n|\r\r|\n\n/g);
   },
 
   pad(str, len, char='0'){
@@ -551,7 +2506,7 @@ const O = {
     var arr = [];
 
     for(var i = 0; i !== len; i++)
-      arr.push(func(i));
+      arr.push(func(i, i / len, len));
 
     return arr;
   },
@@ -560,7 +2515,7 @@ const O = {
     var arr = [];
 
     for(var i = 0; i !== len; i++)
-      arr.push(await func(i));
+      arr.push(await func(i, i / len, len));
 
     return arr;
   },
@@ -597,25 +2552,40 @@ const O = {
     return a;
   },
 
-  last(arr){ return arr[arr.length - 1]; },
+  last(arr, defaultVal=null){
+    if(arr.length === 0) return defaultVal;
+    return arr[arr.length - 1];
+  },
 
   /*
     Random number generator
   */
 
   enhanceRNG(){
-    this.enhancedRNG = 1;
+    O.enhancedRNG = 1;
+    O.randState = O.Buffer.from(O.ca(32, () => Math.random() * 256));
+    O.repeat(10, () => O.random());
+  },
+
+  randSeed(seed){
+    this.rseed = seed | 0;
+    O.randState = O.Buffer.alloc(0);
+    O.repeat(10, () => O.random());
   },
 
   random(){
-    if(!this.enhancedRNG)
+    if(!O.enhancedRNG)
       return Math.random();
 
     var st = O.randState;
     var val = read();
 
-    write(Date.now());
-    write(Math.random() * 2 ** 64);
+    if(O.rseed !== null){
+      write(O.rseed);
+    }else{
+      write(Date.now());
+      write(Math.random() * 2 ** 64);
+    }
 
     O.randState = O.sha256(st);
     return val / 2 ** 64;
@@ -656,17 +2626,40 @@ const O = {
     return arr[index];
   },
 
+  randBuf(len){
+    const buf = O.Buffer.alloc(len);
+    for(let i = 0; i !== len; i++)
+      buf[i] = O.rand(256);
+    return buf;
+  },
+
   /*
     Other functions
   */
 
   repeat(num, func){
-    for(var i = 0; i !== num; i++) func(i);
+    for(var i = 0; i !== num; i++)
+      func(i, i / num, num);
   },
 
   async repeata(num, func){
-    for(var i = 0; i !== num; i++) await func(i);
+    for(var i = 0; i !== num; i++)
+      await func(i, i / num, num);
   },
+
+  sleep(time){
+    const t = Date.now();
+    while(date.now() - t < time);
+  },
+
+  sleepa(time){
+    return new Promise(res => {
+      setTimeout(res, time);
+    });
+  },
+
+  wait(time){ return O.sleep(time); },
+  waita(time){ return O.sleepa(time); },
 
   bound(val, min, max){
     if(val < min) return min;
@@ -709,22 +2702,14 @@ const O = {
   },
 
   enum(arr){
-    var obj = O.obj();
-    obj.name = index => arr[index];
+    const obj = O.obj();
 
     arr.forEach((name, index) => {
       obj[name] = index;
+      obj[index] = name;
     });
 
     return obj;
-  },
-
-  sleep(time=0){
-    return new Promise(res => {
-      setTimeout(() => {
-        res();
-      }, time);
-    });
   },
 
   while(func){
@@ -780,6 +2765,17 @@ const O = {
   hypot(x, y){ return Math.sqrt(x * x + y * y); },
   proto(obj){ return Object.getPrototypeOf(obj); },
 
+  allKeys(obj){
+    const arr = [];
+
+    while(obj !== null){
+      arr.push(O.keys(obj));
+      obj = O.proto(obj);
+    }
+
+    return arr;
+  },
+
   /*
     Events
   */
@@ -810,1558 +2806,8 @@ const O = {
   },
 
   /*
-    Constructors
-  */
-
-  Vector: class{
-    constructor(x=0, y=0){
-      this.set(x, y);
-    }
-
-    static fromAngle(len, angle){
-      var x = Math.cos(angle) * len;
-      var y = Math.sin(angle) * len;
-
-      return new O.Vector(x, y);
-    }
-
-    set(x, y){
-      if(x instanceof O.Vector)
-        ({x, y} = x);
-
-      this.x = x;
-      this.y = y;
-
-      return this;
-    }
-
-    clone(){
-      return new O.Vector(this.x, this.y);
-    }
-
-    add(x, y){
-      if(x instanceof O.Vector)
-        ({x, y} = x);
-
-      this.x += x;
-      this.y += y;
-
-      return this;
-    }
-
-    sub(x, y){
-      if(x instanceof O.Vector)
-        ({x, y} = x);
-
-      this.x -= x;
-      this.y -= y;
-
-      return this;
-    }
-
-    mul(val){
-      this.x *= val;
-      this.y *= val;
-
-      return this;
-    }
-
-    div(val){
-      this.x /= val;
-      this.y /= val;
-
-      return this;
-    }
-
-    combine(len, angle){
-      this.x += Math.cos(angle) * len;
-      this.y += Math.sin(angle) * len;
-
-      return this;
-    }
-
-    dec(x, y){
-      if(x instanceof O.Vector)
-        ({x, y} = x);
-
-      if(x !== 0){
-        var sx = this.x > 0 ? 1 : -1;
-        if(Math.abs(this.x) > x) this.x = x * sx - this.x;
-        else this.x = 0;
-      }
-  
-      if(y !== 0){
-        var sy = this.y > 0 ? 1 : -1;
-        if(Math.abs(this.y) > y) this.y = y * sy - this.y;
-        else this.y = 0;
-      }
-
-      return this;
-    }
-
-    len(){
-      return Math.sqrt(this.x * this.x + this.y * this.y);
-    }
-
-    lenM(){
-      return Math.abs(this.x) + Math.abs(this.y);
-    }
-
-    setLen(len){
-      var angle = this.angle();
-
-      this.x = Math.cos(angle) * len;
-      this.y = Math.sin(angle) * len;
-
-      return this;
-    }
-
-    angle(){
-      return Math.atan2(this.y, this.x);
-    }
-
-    setAngle(angle){
-      var len = this.len();
-
-      this.x = Math.cos(angle) * len;
-      this.y = Math.sin(angle) * len;
-
-      return this;
-    }
-
-    norm(){
-      this.div(this.len());
-
-      return this;
-    }
-
-    dist(x, y){
-      if(x instanceof O.Vector)
-        ({x, y} = x);
-
-      var dx = this.x - x;
-      var dy = this.y - y;
-      
-      return Math.sqrt(dx * dx + dy * dy);;
-    }
-
-    maxLen(maxLen){
-      if(this.len() > maxLen)
-        this.setLen(maxLen);
-
-      return this;
-    }
-
-    rotate(angle){
-      var sin = Math.sin(angle);
-      var cos = Math.cos(angle);
-      var x = this.x * cos - this.y * sin;
-      var y = this.x * sin + this.y * cos;
-
-      this.x = x;
-      this.y = y;
-
-      return this;
-    }
-
-    isIn(x1, y1, x2, y2){
-      var {x, y} = this;
-      return x >= x1 && y >= y1 && x < x2 && y < y2;
-    }
-  },
-
-  Color: class extends Uint8Array{
-    constructor(r, g, b){
-      super(3);
-
-      this.set(r, g, b);
-    }
-
-    static from(rgb){
-      return new O.Color(rgb[0], rgb[1], rgb[2]);
-    }
-
-    static rand(hsv=0){
-      var rgb;
-
-      if(!hsv) rgb = O.ca(3, () => O.rand(256));
-      else rgb = O.hsv(O.randf(1));
-
-      return O.Color.from(rgb);
-    }
-
-    clone(){
-      return O.Color.from(this);
-    }
-
-    from(col){
-      this[0] = col[0];
-      this[1] = col[1];
-      this[2] = col[2];
-      this.updateStr();
-    }
-
-    set(r, g, b){
-      this[0] = r;
-      this[1] = g;
-      this[2] = b;
-      this.updateStr();
-    }
-
-    setR(r){
-      this[0] = r;
-      this.updateStr();
-    }
-
-    setG(g){
-      this[1] = g;
-      this.updateStr();
-    }
-
-    setB(b){
-      this[2] = b;
-      this.updateStr();
-    }
-
-    updateStr(){
-      this.str = `#${[...this].map(byte => {
-        return byte.toString(16).padStart(2, '0');
-      }).join('')}`;
-    }
-
-    toString(){
-      return this.str;
-    }
-  },
-
-  SimpleGrid: class{
-    constructor(w, h, func=null, d=null){
-      this.w = w;
-      this.h = h;
-
-      if(d === null){
-        d = O.ca(h, y => {
-          return O.ca(w, x =>{
-            if(func === null) return O.obj();
-            return func(x, y);
-          });
-        });
-      }
-
-      this.d = d;
-    }
-
-    iterate(func){
-      var {w, h} = this;
-
-      for(var y = 0; y !== h; y++)
-        for(var x = 0; x !== w; x++)
-          func(x, y, this.get(x, y));
-
-    }
-
-    iterAdj(x, y, func){
-      var visited = new O.Map2D();
-      var queue = [x, y];
-
-      while(queue.length !== 0){
-        x = queue.shift(), y = queue.shift();
-        if(visited.has(x, y)) continue;
-
-        visited.add(x, y);
-        if(!func(x, y, this.get(x, y))) continue;
-
-        this.adj(x, y, (x, y, d) => {
-          if(d === null) return;
-          if(!visited.has(x, y)) queue.push(x, y);
-        });
-      }
-    }
-
-    adj(x, y, func){
-      return func(x, y - 1, this.get(x, y - 1), 0) ||
-             func(x + 1, y, this.get(x + 1, y), 1) ||
-             func(x, y + 1, this.get(x, y + 1), 2) ||
-             func(x - 1, y, this.get(x - 1, y), 3);
-    }
-
-    nav(cs, dir){
-      switch(dir){
-        case 0: cs[1]--; break;
-        case 1: cs[0]++; break;
-        case 2: cs[1]++; break;
-        case 3: cs[0]--; break;
-      }
-
-      return this.get(cs[0], cs[1]);
-    }
-
-    get(x, y){
-      if(!this.includes(x, y)) return null;
-      return this.d[y][x];
-    }
-
-    set(x, y, val){
-      if(!this.includes(x, y)) return null;
-      this.d[y][x] = val;
-    }
-
-    includes(x, y){
-      return x >= 0 && y >= 0 && x < this.w && y < this.h;
-    }
-  },
-
-  Grid: class{
-    constructor(w, h, func){
-      var grid = O.ca(w, x => O.ca(h, y => new O.PathTile(func(x, y))));
-      grid.w = w;
-      grid.h = h;
-      grid.iterate = this.iterate.bind(grid);
-      return grid;
-    }
-    
-    iterate(func){
-      var {w, h} = this;
-      var x, y;
-      for(y = 0; y < h; y++) for(x = 0; x < w; x++) func(x, y, this[x][y]);
-    }
-  },
-
-  PathTile: class{
-    constructor(wall){
-      this.wall = wall;
-      this.visited = 0;
-      this.heuristicDist = 0;
-      this.pathDist = 0;
-      this.totalDist = 0;
-      this.dir = -1;
-    }
-  },
-
-  TilesGrid: class{
-    constructor(g=null){
-      this.isNode = O.env === 'node';
-      this.bgEnabled = 1;
-
-      this.w = 1;
-      this.h = 1;
-      this.s = 32;
-
-      this.tileParams = [];
-      this.drawFunc = O.nop;
-
-      this.g = g !== null ? g : O.ceCanvas(1).g;
-
-      this.iw = this.g.g.canvas.width;
-      this.ih = this.g.g.canvas.height;
-      this.iwh = this.iw / 2;
-      this.ihh = this.ih / 2;
-
-      this.resize();
-
-      var tileParams = this.tileParams;
-
-      this.Tile = class{
-        constructor(params){
-          tileParams.forEach((param, index) => {
-            this[param] = params[index];
-          });
-        }
-      };
-
-      this.emptyFunc = () => [];
-      this.d = [];
-      this.create();
-    }
-
-    setWH(w, h){
-      this.w = w;
-      this.h = h;
-      this.wh = w / 2;
-      this.hh = h / 2;
-      this.resize();
-    }
-
-    setSize(s){
-      this.s = s;
-      this.resize();
-    }
-
-    setTileParams(params){
-      this.tileParams.length = [];
-      params.forEach(param => this.tileParams.push(param));
-    }
-
-    setDrawFunc(func = O.nop){
-      this.drawFunc = func;
-    }
-
-    updateIWH(){
-      if(this.isNode)
-        return;
-
-      var iw = window.innerWidth;
-      var ih = window.innerHeight;
-      if(this.iw == iw && this.ih == ih) return;
-
-      this.iw = iw;
-      this.ih = ih;
-      this.iwh = iw / 2;
-      this.ihh = ih / 2;
-
-      var g = this.g.g;
-      var canvas = g.canvas;
-
-      canvas.width = iw;
-      canvas.height = ih;
-    }
-
-    create(func=this.emptyFunc){
-      var d = this.d;
-      d.length = this.w;
-      d.fill(null);
-
-      d.forEach((a, x) => {
-        d[x] = O.ca(this.h, O.nop);
-      });
-
-      this.iterate((x, y) => {
-        d[x][y] = new this.Tile(func(x, y));
-      });
-    }
-
-    iterate(func){
-      var {w, h, d, g} = this;
-      var x, y;
-
-      for(y = 0; y < h; y++){
-        for(x = 0; x < w; x++){
-          func(x, y, d[x][y], g);
-        }
-      }
-    }
-
-    resize(){
-      this.updateIWH();
-
-      var g = this.g;
-
-      g.resetTransform();
-      g.lineWidth = 1;
-
-      g.fillStyle = 'darkgray';
-      g.fillRect(0, 0, this.iw, this.ih);
-
-      var tx = this.iw - this.w * this.s >> 1;
-      var ty = this.ih - this.h * this.s >> 1;
-
-      g.translate(Math.max(tx, 0), Math.max(ty, 0));
-      g.scale(this.s);
-
-      if(this.bgEnabled){
-        g.fillStyle = 'white';
-        g.fillRect(0, 0, this.w, this.h);
-      }
-
-      g.textBaseline = 'middle';
-      g.textAlign = 'center';
-      g.font(this.s * .8);
-    }
-
-    draw(){
-      this.iterate(this.drawFunc);
-    }
-
-    drawTile(x, y){
-      this.drawFunc(x, y, this.d[x][y], this.g);
-    }
-
-    drawFrame(x, y, func = null){
-      var g = this.g;
-      var s1 = 1 / this.s + 1;
-
-      if(func === null){
-        g.beginPath();
-        g.rect(x, y, 1, 1);
-        g.stroke();
-      }else{
-        this.adjacent(x, y, (px, py, d1, dir) => {
-          if(func(d1, dir)){
-            switch(dir){
-              case 0:
-                g.beginPath();
-                g.moveTo(x, y);
-                g.lineTo(x + s1, y);
-                g.stroke();
-                break;
-              case 1:
-                g.beginPath();
-                g.moveTo(x, y);
-                g.lineTo(x, y + s1);
-                g.stroke();
-                break;
-              case 2:
-                g.beginPath();
-                g.moveTo(x, y + 1);
-                g.lineTo(x + s1, y + 1);
-                g.stroke();
-                break;
-              case 3:
-                g.beginPath();
-                g.moveTo(x + 1, y);
-                g.lineTo(x + 1, y + s1);
-                g.stroke();
-                break;
-            }
-          }
-        });
-      }
-    }
-
-    drawTube(x, y, dirs, size, round){
-      var {g} = this;
-      g.concaveMode = 1;
-
-      var s1 = (1 - size) / 2;
-      var s2 = 1 - s1;
-
-      g.beginPath();
-
-      drawingBlock: {
-        if(round === 1){
-          var radius = Math.min(size, .5);
-
-          var p1 = (1 - Math.sqrt(radius * radius * 4 - size * size)) / 2;
-          var p2 = 1 - p1;
-
-          var phi1 = (1.9 - size / (radius * 4)) * O.pi;
-          var phi2 = phi1 + O.pi2 - size / radius * O.pih;
-
-          var dphi = 0;
-          var foundArc = 1;
-
-          switch(dirs){
-            case 0:
-              g.arc(x + .5, y + .5, radius, 0, O.pi2);
-              break;
-
-            case 1:
-              g.moveTo(x + s2, y + p1);
-              g.lineTo(x + s2, y);
-              g.lineTo(x + s1, y);
-              g.lineTo(x + s1, y + p1);
-              break;
-
-            case 2:
-              dphi = O.pi2 - O.pih;
-              g.moveTo(x + p1, y + s1);
-              g.lineTo(x, y + s1);
-              g.lineTo(x, y + s2);
-              g.lineTo(x + p1, y + s2);
-              break;
-
-            case 4:
-              dphi = O.pi;
-              g.moveTo(x + s1, y + p2);
-              g.lineTo(x + s1, y + 1);
-              g.lineTo(x + s2, y + 1);
-              g.lineTo(x + s2, y + p2);
-              break;
-
-            case 8:
-              dphi = O.pi2 - (O.pi + O.pih);
-              g.moveTo(x + p2, y + s2);
-              g.lineTo(x + 1, y + s2);
-              g.lineTo(x + 1, y + s1);
-              g.lineTo(x + p2, y + s1);
-              break;
-
-            default:
-              foundArc = 0;
-              break;
-          }
-
-          if(foundArc)
-            break drawingBlock;
-        }
-
-        g.moveTo(x + s1, y + s1);
-
-        if(dirs & 1){
-          g.lineTo(x + s1, y);
-          g.lineTo(x + s2, y);
-        }
-        g.lineTo(x + s2, y + s1);
-
-        if(dirs & 8){
-          g.lineTo(x + 1, y + s1);
-          g.lineTo(x + 1, y + s2);
-        }
-        g.lineTo(x + s2, y + s2);
-
-        if(dirs & 4){
-          g.lineTo(x + s2, y + 1);
-          g.lineTo(x + s1, y + 1);
-        }
-        g.lineTo(x + s1, y + s2);
-
-        if(dirs & 2){
-          g.lineTo(x, y + s2);
-          g.lineTo(x, y + s1);
-        }
-      }
-
-      if(foundArc){
-        if(dirs !== 0)
-          g.arc(x + .5, y + .5, radius, phi2 + dphi, phi1 + dphi, 1);
-      }else{
-        g.closePath();
-      }
-
-      g.fill();
-      g.stroke();
-
-      g.concaveMode = 0;
-    }
-
-    get(x, y){
-      var {w, h} = this;
-      if(x < 0 || y < 0 || x >= w || y >= h) return null;
-      return this.d[x][y];
-    }
-
-    adjacent(x, y, func){
-      func(x, y - 1, this.get(x, y - 1), 0);
-      func(x - 1, y, this.get(x - 1, y), 1);
-      func(x, y + 1, this.get(x, y + 1), 2);
-      func(x + 1, y, this.get(x + 1, y), 3);
-    }
-  },
-
-  Map2D: class{
-    constructor(x=null, y=null, val=1){
-      this.d = O.obj();
-
-      if(x !== null)
-        this.add(x, y, val);
-    }
-
-    reset(){
-      this.d = O.obj();
-      return this;
-    }
-
-    get(x, y){
-      if(!this.has(x, y)) return null;
-      return this.d[y][x];
-    }
-
-    set(x, y, val=1){
-      var {d} = this;
-
-      if(!(y in d)) d[y] = O.obj();
-      d[y][x] = val;
-    }
-
-    add(x, y, val=1){
-      this.set(x, y, val);
-    }
-
-    remove(x, y){
-      var {d} = this;
-
-      if(!(y in d)) return;
-      delete d[y][x];
-    }
-
-    has(x, y){
-      var {d} = this;
-
-      if(!(y in d)) return 0;
-      return d[y][x];
-    }
-
-    getArr(){
-      var {d} = this;
-
-      var arr = [];
-
-      O.keys(d).forEach(y => {
-        y |= 0;
-        O.keys(d[y]).forEach(x => {
-          x |= 0;
-          arr.push([x, y]);
-        });
-      });
-
-      return arr;
-    }
-  },
-
-  Map3D: class{
-    constructor(x=null, y=null, z = null, val=1){
-      this.d = O.obj();
-
-      if(x !== null)
-        this.add(x, y, z, val);
-    }
-
-    get(x, y, z){
-      if(!this.has(x, y, z)) return null;
-      return this.d[z][y][x];
-    }
-
-    set(x, y, z, val=1){
-      var {d} = this;
-
-      if(!(z in d)) d[z] = O.obj();
-      d = d[z];
-
-      if(!(y in d)) d[y] = O.obj();
-      d[y][x] = val;
-    }
-
-    add(x, y, z, val=1){
-      this.set(x, y, z, val);
-    }
-
-    remove(x, y, z){
-      var {d} = this;
-
-      if(!(z in d)) return;
-      d = d[z];
-
-      if(!(y in d)) return;
-      delete d[y][x];
-    }
-
-    has(x, y, z){
-      var {d} = this;
-
-      if(!(z in d)) return 0;
-      d = d[z];
-
-      
-      if(!(y in d)) return 0;
-      return d[y][x];
-    }
-
-    getArr(){
-      var {d} = this;
-
-      var arr = [];
-
-      O.keys(d).forEach(z => {
-        z |= 0;
-        O.keys(d = d[z]).forEach(y => {
-          y |= 0;
-          O.keys(d[y]).forEach(x => {
-            x |= 0;
-            arr.push([x, y, z]);
-          });
-        });
-      });
-
-      return arr;
-    }
-  },
-
-  EnhancedRenderingContext: class{
-    constructor(g){
-      this.g = g;
-      this.canvas = g.canvas;
-
-      this.w = this.canvas.width;
-      this.h = this.canvas.height;
-
-      this.s = 1;
-      this.tx = 0;
-      this.ty = 0;
-
-      this.rtx = 0;
-      this.rty = 0;
-      this.rot = 0;
-      this.rcos = 0;
-      this.rsin = 0;
-
-      this.fontSize = 32;
-      this.fontScale = 1;
-      this.fontFamily = 'Arial';
-      this.fontModifiers = '';
-
-      this.pointsQueue = [];
-      this.arcsQueue = [];
-
-      this.concaveMode = false;
-
-      [
-        'fillStyle',
-        'strokeStyle',
-        'globalAlpha',
-        'textAlign',
-        'textBaseline',
-        'lineWidth',
-        'globalCompositeOperation',
-        'lineCap',
-        'lineJoin',
-      ].forEach(prop => {
-        Object.defineProperty(this, prop, {
-          set: val => g[prop] = val,
-          get: () => g[prop],
-        });
-      });
-
-      [
-        'clearRect',
-        'measureText',
-      ].forEach(prop => this[prop] = g[prop].bind(g));
-
-      this.fillStyle = 'white';
-      this.strokeStyle = 'black';
-      this.textAlign = 'center';
-      this.textBaseline = 'middle';
-
-      this.drawImage = g.drawImage.bind(g);
-
-      this.clearCanvas();
-    }
-
-    clearCanvas(col=null){
-      var {canvas, g} = this;
-      if(col !== null) g.fillStyle = col;
-      g.fillRect(0, 0, canvas.width, canvas.height);
-    }
-
-    createLinearGradient(...params){
-      return this.g.createLinearGradient(...params);
-    }
-
-    beginPath(){
-      this.pointsQueue.length = 0;
-      this.arcsQueue.length = 0;
-    }
-
-    closePath(){
-      var q = this.pointsQueue;
-      q.push(1, q[1], q[2]);
-    }
-
-    fill(){
-      this.finishLine(true);
-      this.g.fill();
-    }
-
-    stroke(){
-      this.finishLine(false);
-      this.g.stroke();
-    }
-
-    finishLine(fillMode){
-      var {g} = this;
-      var q = this.pointsQueue;
-      var aq = this.arcsQueue;
-
-      var x1 = q[1];
-      var y1 = q[2];
-
-      var i = 0;
-      var j = 0;
-
-      var concaveMode = this.concaveMode && !fillMode;
-      var hasArcs = aq.length !== 0;
-
-      if(concaveMode){
-        var fillStyle = g.fillStyle;
-        g.fillStyle = g.strokeStyle;
-      }
-
-      g.beginPath();
-
-      do{
-        if(j < aq.length && aq[j] === i){
-          g.arc(aq[j + 1], aq[j + 2], aq[j + 3], aq[j + 4], aq[j + 5], aq[j + 6]);
-          j += 7;
-        }
-
-        var type = q[i];
-
-        var x2 = q[i + 1];
-        var y2 = q[i + 2];
-
-        if(fillMode){
-          if(Math.abs(x1 - x2) === 1) x2 = x1;
-          if(Math.abs(y1 - y2) === 1) y2 = y1;
-        }
-
-        if(!type){
-          x1 = x2;
-          y1 = y2;
-          continue;
-        }
-
-        if(fillMode){
-          g.lineTo(x2, y2);
-        }else{
-          var dx = y1 !== y2 ? .5 : 0;
-          var dy = x1 !== x2 ? .5 : 0;
-
-          g.moveTo(x1 + dx, y1 + dy);
-          g.lineTo(x2 + dx, y2 + dy);
-
-          if(concaveMode){
-            if(x1 < x2 || y1 < y2)
-              g.fillRect(x2, y2, 1, 1);
-          }
-        }
-
-        x1 = x2;
-        y1 = y2;
-      }while((i += 3) < q.length);
-
-      if(concaveMode)
-        g.fillStyle = fillStyle;
-    }
-
-    resetTransform(resetScale=1){
-      if(resetScale)
-        this.s = 1;
-      
-      this.tx = 0;
-      this.ty = 0;
-      this.rot = 0;
-
-      this.g.resetTransform();
-    }
-
-    scale(s){
-      this.s *= s;
-    }
-
-    translate(x, y){
-      this.tx += this.s * x;
-      this.ty += this.s * y;
-    }
-
-    rotate(x, y, angle){
-      this.rot = angle;
-
-      if(angle){
-        this.rtx = x;
-        this.rty = y;
-        this.rcos = Math.cos(angle);
-        this.rsin = -Math.sin(angle);
-      }
-    }
-
-    rect(x, y, w, h){
-      var s1 = 1 / this.s;
-
-      this.moveTo(x, y);
-      this.lineTo(x + w + s1, y);
-
-      this.moveTo(x + w, y);
-      this.lineTo(x + w, y + h + s1);
-
-      this.moveTo(x + w + s1, y + h);
-      this.lineTo(x, y + h);
-
-      this.moveTo(x, y + h + s1);
-      this.lineTo(x, y);
-    }
-
-    fillRect(x, y, w, h){
-      if(this.rot){
-        this.g.beginPath();
-        this.rect(x, y, w, h);
-        this.fill();
-        return;
-      }
-
-      this.g.fillRect(Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty), Math.round(w * this.s) + 1, Math.round(h * this.s) + 1);
-    }
-
-    moveTo(x, y){
-      if(this.rot){
-        var xx = x - this.rtx;
-        var yy = y - this.rty;
-
-        x = this.rtx + xx * this.rcos - yy * this.rsin;
-        y = this.rty + yy * this.rcos + xx * this.rsin;
-      }
-
-      this.pointsQueue.push(0, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
-    }
-
-    lineTo(x, y){
-      if(this.rot){
-        var xx = x - this.rtx;
-        var yy = y - this.rty;
-
-        x = this.rtx + xx * this.rcos - yy * this.rsin;
-        y = this.rty + yy * this.rcos + xx * this.rsin;
-      }
-
-      this.pointsQueue.push(1, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
-    }
-
-    arc(x, y, r, a1, a2, acw){
-      if(this.rot){
-        var xx = x - this.rtx;
-        var yy = y - this.rty;
-
-        x = this.rtx + xx * this.rcos - yy * this.rsin;
-        y = this.rty + yy * this.rcos + xx * this.rsin;
-
-        a1 = (a1 - this.rot) % O.pi2;
-        a2 = (a2 - this.rot) % O.pi2;
-      }
-
-      var xx = x * this.s + this.tx + .5;
-      var yy = y * this.s + this.ty + .5;
-      var rr = r * this.s;
-      this.arcsQueue.push(this.pointsQueue.length, xx, yy, rr, a1, a2, acw);
-
-      xx += Math.cos(a2) * rr;
-      yy += Math.sin(a2) * rr;
-      this.pointsQueue.push(0, xx, yy);
-    }
-
-    fillText(text, x, y){
-      if(this.rot){
-        var xx = x - this.rtx;
-        var yy = y - this.rty;
-
-        x = this.rtx + xx * this.rcos - yy * this.rsin;
-        y = this.rty + yy * this.rcos + xx * this.rsin;
-      }
-
-      this.g.fillText(text, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
-    }
-
-    strokeText(text, x, y){
-      if(this.rot){
-        var xx = x - this.rtx;
-        var yy = y - this.rty;
-
-        x = this.rtx + xx * this.rcos - yy * this.rsin;
-        y = this.rty + yy * this.rcos + xx * this.rsin;
-      }
-
-      this.g.strokeText(text, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
-    }
-
-    updateFont(){
-      var modifiers = this.fontModifiers;
-      var strDelimiter = modifiers.length !== 0 ? ' ' : '';
-
-      this.g.font = `${modifiers}${strDelimiter}${this.fontSize * this.fontScale}px "${this.fontFamily}"`;
-    }
-
-    font(size){
-      this.fontSize = size;
-      this.updateFont();
-    }
-
-    scaleFont(scale){
-      this.fontScale = scale;
-      this.updateFont();
-    }
-
-    setFontModifiers(modifiers){
-      this.fontModifiers = modifiers;
-      this.updateFont();
-    }
-
-    removeFontModifiers(){
-      this.fontModifiers = '';
-      this.updateFont();
-    }
-  },
-
-  BitStream: class{
-    constructor(arr=null, checksum=false){
-      this.arr = new Uint8Array(0);
-      this.len = 0;
-      this.bits = '';
-
-      this.rIndex = 0;
-      this.rBits = '';
-
-      this.error = false;
-
-      if(arr != null){
-        this.parse([...arr], checksum);
-      }
-    }
-
-    parse(arr, checksum=false){
-      if(checksum){
-        if(!this.checkArr(arr)){
-          this.error = true;
-          arr.length = 0;
-        }
-      }
-
-      this.arr = Uint8Array.from(arr);
-      this.len = this.arr.length;
-    }
-
-    checkArr(arr){
-      if(arr.length & 31) return false;
-
-      var csum = new Uint8Array(arr.splice(arr.length - 32));
-
-      arr.forEach((byte, index) => {
-        var cs = csum[index & 31];
-        arr[index] ^= cs ^ this.getIndexValue(index ^ cs, .8);
-      });
-
-      var hash = O.sha256(arr);
-
-      arr.forEach((byte, index) => {
-        arr[index] = byte - this.getIndexValue(index, .9) & 255;
-      });
-
-      hash.forEach((byte, index) => {
-        csum[index] ^= byte;
-      });
-
-      if(csum.some(byte => byte)) return false;
-      return arr;
-    }
-
-    writeByte(a){
-      if(this.len == this.arr.length) this.arr = new Uint8Array([...this.arr, ...Array(this.len || 1)]);
-      this.arr[this.len++] = a;
-    }
-
-    writeBits(a){
-      this.bits += a;
-
-      while(this.bits.length >= 8){
-        a = this.bits.substring(0, 8);
-        this.bits = this.bits.substring(8);
-        this.writeByte(parseInt(a, 2));
-      }
-    }
-
-    writeBit(a){
-      this.write(a, 1);
-    }
-
-    write(a, b=null){
-      if(b == null) b = (1 << O.binLen(a)) - 1;
-
-      b = b.toString(2);
-      a = a.toString(2).padStart(b.length, '0');
-
-      var eq = true;
-
-      a = [...a].filter((v, i) => {
-        if(!eq) return true;
-        if(!+b[i]) return false;
-        if(!+v) eq = false;
-        return true;
-      }).join('');
-
-      this.writeBits(a);
-    }
-
-    readByte(a){
-      if(this.rIndex == this.arr.length) return 0;
-      return this.arr[this.rIndex++];
-    }
-
-    readBits(a){
-      var bits = '';
-
-      while(this.rBits.length < a) this.rBits += this.readByte().toString(2).padStart(8, '0');
-
-      bits = this.rBits.substring(0, a);
-      this.rBits = this.rBits.substring(a);
-
-      return bits;
-    }
-
-    readBit(){
-      return this.read(1);
-    }
-
-    read(b = 255){
-      var a;
-
-      a = this.readBits(O.binLen(b));
-      b = b.toString(2);
-
-      var eq = true;
-      var i = 0;
-
-      b = [...b].map(v => {
-        if(!eq) return a[i++];
-        if(!+v) return 0;
-        if(!+a[i]) eq = false;
-        return +a[i++];
-      }).join('');
-
-      this.rBits = a.substring(i) + this.rBits;
-
-      return parseInt(b, 2);
-    }
-
-    getIndexValue(index, exp){
-      var str = ((index + 256) ** exp).toExponential();
-      return str.substring(2, 5) & 255;
-    }
-
-    pack(){
-      if(this.bits) this.writeBits('0'.repeat(8 - this.bits.length));
-    }
-
-    getArr(checksum=false){
-      var arr = O.ca(this.len + !!this.bits, i => {
-        if(i < this.len) return this.arr[i];
-        return parseInt(this.bits.padEnd(8, '0'), 2);
-      });
-
-      if(!checksum) return arr;
-
-      while(arr.length & 31){
-        arr.push(0);
-      }
-
-      arr.forEach((byte, index) => {
-        arr[index] = byte + this.getIndexValue(index, .9) & 255;
-      });
-
-      var csum = O.sha256(arr);
-
-      arr.forEach((byte, index) => {
-        var cs = csum[index & 31];
-        arr[index] ^= cs ^ this.getIndexValue(index ^ cs, .8);
-      });
-
-      return [...arr, ...csum];
-    }
-
-    stringify(checksum=false){
-      var arr = this.getArr(checksum);
-
-      return arr.map((byte, index) => {
-        var newLine = index != arr.length - 1 && !(index + 1 & 31);
-        var byteStr = byte.toString(16).toUpperCase().padStart(2, '0');
-
-        return `${byteStr}${newLine ? '\n' : ''}`;
-      }).join('');
-    }
-  },
-
-  /*IntStream: class{
-    constructor(d=null){
-      if(d === null) d = 0n;
-      else if(typeof d === 'number') d = BigInt(d);
-      else if(typeof d === 'string') d = BigInt(d);
-      else if(Array.isArray(d)) d = O.IntStream.parse(d);
-
-      this.d = d;
-      this.multiplier = 1n;
-    }
-
-    static parse(arr){
-      var len = BigInt(arr.length);
-      var d = 0n;
-
-      for(var i = 0n; i !== len; i++)
-        d += (1n << (i << 3n)) * BigInt(arr[i]);
-
-      return d;
-    }
-
-    hasMore(){
-      return this.d !== 0n;
-    }
-
-    read(base, modify=1, toInt=1){
-      base = BigInt(base);
-      var val = this.d % base;
-      if(modify) this.d /= base;
-      if(toInt) val = Number(val);
-      return val;
-    }
-
-    write(base, val){
-      this.d += this.multiplier * BigInt(val);
-      this.multiplier *= BigInt(base);
-    }
-
-    pack(){
-      var {d} = this;
-      var arr = [];
-
-      while(d !== 0n){
-        var val = Number(d & 255n);
-        arr.push(val);
-        d >>= 8n;
-      }
-
-      return arr;
-    }
-  },*/
-
-  Buffer: class extends Uint8Array{
-    constructor(...params){
-      if(params.length === 1 && typeof params[0] === 'string')
-        params[0] = [...params[0]].map(a => O.cc(a));
-
-      super(...params);
-    }
-
-    static alloc(size){
-      return new O.Buffer(size);
-    }
-
-    static from(data, encoding){
-      if(data.length === 0)
-        return O.Buffer.alloc(0);
-
-      switch(encoding){
-        case 'hex':
-          data = data.match(/[0-9a-f]{2}/gi).map(a => parseInt(a, 16));
-          return new O.Buffer(data);
-          break;
-
-        default:
-          return new O.Buffer(data);
-          break;
-      }
-    }
-
-    static concat(arr){
-      arr = arr.reduce((concatenated, buff) => {
-        return [...concatenated, ...buff];
-      }, []);
-
-      return new O.Buffer(arr);
-    }
-
-    toString(encoding){
-      var arr = [...this];
-
-      switch(encoding){
-        case 'hex':
-          return arr.map(a => a.toString(16).padStart(2, '0')).join('');
-          break;
-
-        default:
-          return arr.map(a => String.fromCharCode(a)).join('');
-          break;
-      }
-    }
-
-    readUInt32BE(offset){
-      var val;
-
-      val = this[offset] * 2 ** 24;
-      val += this[offset + 1] * 2 ** 16;
-      val += this[offset + 2] * 2 ** 8;
-      val += this[offset + 3];
-
-      return val;
-    }
-
-    writeUInt32BE(val, offset){
-      this[offset] = val / 2 ** 24;
-      this[offset + 1] = val / 2 ** 16;
-      this[offset + 2] = val / 2 ** 8;
-      this[offset + 3] = val;
-    }
-
-    writeInt32BE(val, offset){
-      this[offset] = val >> 24;
-      this[offset + 1] = val >> 16;
-      this[offset + 2] = val >> 8;
-      this[offset + 3] = val;
-    }
-  },
-
-  Storage: class{
-    constructor(obj=null, path=null, prefix=null){
-      if(obj === null) obj = O.obj();
-
-      this.obj = obj;
-      this.prefix = prefix;
-
-      if(path !== null){
-        var obj1 = this.get(path);
-
-        if(!this.isObj(obj1)){
-          obj1 = O.obj();
-          this.set(path, obj1);
-        }
-
-        this.obj = obj1;
-      }
-    }
-
-    reset(){
-      const {obj} = this;
-
-      for(var key of O.keys(obj))
-        if(this.isOwnKey(key))
-          delete obj[key];
-    }
-
-    has(path){
-      var {obj} = this;
-
-      return this.iterPath(path, key => {
-        if(!(key in obj)) return;
-        obj = obj[key];
-        return 1;
-      });
-    }
-
-    get(path, defaultVal=null){
-      var {obj} = this;
-
-      var found = this.iterPath(path, key => {
-        if(!(key in obj)) return;
-        obj = obj[key];
-        return 1;
-      });
-
-      if(!found) return defaultVal;
-      return obj;
-    }
-
-    set(path, val){
-      var {obj} = this;
-      var last;
-
-      this.iterPath(path, (key, index, arr) => {
-        if(index === arr.length - 1){
-          last = key;
-          return 1;
-        }
-
-        if(!this.isObj(obj[key])) obj[key] = O.obj();
-        obj = obj[key];
-        return 1;
-      });
-
-      obj[last] = val;
-    }
-
-    remove(path){
-      var {obj} = this;
-      var last;
-
-      var found = this.iterPath(path, (key, index, arr) => {
-        if(index === arr.length - 1){
-          last = key;
-          return 1;
-        }
-
-        if(!(key in obj)) return;
-        obj = obj[key];
-        return 1;
-      });
-
-      if(!found) return;
-      delete obj[last];
-    }
-
-    iterPath(path, func){
-      return path.split('.').every((key, index, arr) => {
-        if(index === 0) key = this.format(key);
-        return func(key, index, arr);
-      });
-    }
-
-    format(key){
-      const {prefix} = this;
-
-      if(prefix === null) return key;
-      return `${prefix}_${key}`;
-    }
-
-    isOwnKey(key){
-      const {prefix} = this;
-
-      if(prefix === null) return 1;
-      return key.startsWith(`${prefix}_`);
-    }
-
-    isObj(val){
-      return typeof val === 'object' && val !== null;
-    }
-  },
-
-  /*
     Algorithms
   */
-
-  findPathAStar(grid, x1, y1, x2, y2){
-    if(x1 == x2 && y1 == y2) return [];
-
-    grid.iterate((x, y, d) => {
-      d.visited = x == x1 && y == y1;
-      d.heuristicDist = Math.abs(x - x2) + Math.abs(y - y2);
-      d.pathDist = 0;
-      d.totalDist = d.heuristicDist;
-      d.dir = -1;
-    });
-
-    var {w, h} = grid;
-    var distStep = 10;
-    var nodes = [x1, y1];
-    var x, y, dist, dir, i;
-    var d1, d2;
-
-    while(1){
-      if(!nodes.length) return null;
-      [x, y] = [nodes.shift(), nodes.shift()];
-      if(Math.abs(x - x2) + Math.abs(y - y2) == 1) break;
-      d1 = grid[x][y];
-
-      if(y) visit(x, y - 1, 0);
-      if(x) visit(x - 1, y, 1);
-      if(y < h - 1) visit(x, y + 1, 2);
-      if(x < w - 1) visit(x + 1, y, 3);
-    }
-
-    var path = [];
-    if(y > y2) path.push(0);
-    else if(x > x2) path.push(1);
-    else if(y < y2) path.push(2);
-    else path.push(3);
-
-    while(1){
-      if(x == x1 && y == y1) break;
-      dir = grid[x][y].dir;
-      path.unshift(dir);
-      if(!dir) y++;
-      else if(dir == 1) x++;
-      else if(dir == 2) y--;
-      else x--;
-    }
-
-    return path;
-
-    function visit(xx, yy, dir){
-      d2 = grid[xx][yy];
-      if(d2.wall) return;
-      dist = d2.heuristicDist + d1.pathDist + distStep;
-
-      if(!d2.visited || d2.totalDist > dist){
-        d2.visited = true;
-        d2.pathDist = d1.pathDist + distStep;
-        d2.totalDist = dist;
-        d2.dir = dir;
-        for(i = 0; i < nodes.length; i += 2) if(grid[nodes[i]][nodes[i + 1]].totalDist > dist) break;
-        nodes.splice(i, 0, xx, yy);
-      }
-    }
-  },
   
   sha256: (() => {
     const MAX_UINT = 2 ** 32;
@@ -2371,7 +2817,17 @@ const O = {
 
     return sha256;
 
-    function sha256(buff){
+    function sha256(data){
+      if(O.isNode && O.fastSha256){
+        var hash = O.crypto.createHash('sha256');
+        hash.update(data);
+        return hash.digest();
+      }
+
+      return slowSha256(data);
+    }
+
+    function slowSha256(buff){
       if(!(buff instanceof O.Buffer))
         buff = new O.Buffer(buff);
 
