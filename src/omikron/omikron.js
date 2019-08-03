@@ -2316,25 +2316,31 @@ const O = {
     }
   },
 
-  *tokenize(str, tokens, throwOnError=1, firstMatch=0){
-    const names = O.keys(tokens);
+  tokenize(str, tokens, firstMatch=1, throwOnError=0){
+    const tlen = tokens.length;
+    const len = tlen >> 1;
+    const lastIndex = tlen - 1;
 
-    tokens = (original => {
-      const tokens = O.obj();
+    const regs = [];
+    const funcs = [];
 
-      for(const name of names){
-        const rstr = String(original[name]);
-        tokens[name] = new RegExp(`^${rstr.slice(1, rstr.length - 1)}`);
+    tokens.forEach((val, index) => {
+      if((index & 1) === 1 || index === lastIndex){
+        funcs.push(val);
+        return;
       }
 
-      return tokens;
-    })(tokens);
+      const rstr = String(val);
+      const reg = new RegExp(`^${rstr.slice(1, rstr.length - 1)}`);
+      regs.push(reg);
+    });
 
     while(str !== ''){
       let match = null;
+      let index = -1;
 
-      for(const name of names){
-        const reg = tokens[name];
+      for(let i = 0; i !== len; i++){
+        const reg = regs[i];
         const m = str.match(reg);
         if(m === null) continue;
 
@@ -2342,12 +2348,15 @@ const O = {
           throw new TypeError('Empty string match is not allowed');
 
         if(firstMatch){
-          match = [name, m];
+          match = [reg, m];
+          index = i;
           break;
         }
 
-        if(match === null || m.length > match[1].length)
-          match = [name, m];
+        if(match === null || m[0].length > match[1][0].length){
+          match = [reg, m];
+          index = i;
+        }
       }
 
       if(match === null){
@@ -2356,14 +2365,13 @@ const O = {
 
         if(throwOnError) throw new SyntaxError(`Invalid syntax near ${O.sf(s)}`);
 
-        yield [null, s, []];
-        return;
+        return O.last(funcs)(s, []);
       }
 
-      const name = match[0];
+      const reg = match[0];
       const s = match[1][0];
       const groups = match[1].slice(1);
-      yield [name, s, groups];
+      funcs[index](s, groups);
 
       str = str.slice(s.length);
     }
@@ -2736,6 +2744,12 @@ const O = {
     const minute = String(date.getMinutes()).padStart(2, '0');
 
     return `${day}.${month}.${year}. ${hour}:${minute}`;
+  },
+
+  perf(func){
+    const t = O.now;
+    func();
+    log(((O.now - t) / 1e3).toFixed(3));
   },
 
   bool(val){ return Boolean(O.int(val)); },
