@@ -7,47 +7,50 @@ const O = require('..');
 
 const cwd = __dirname;
 
+const ok = assert.ok;
+const eq = assert.strictEqual;
+
 describe('String functions', () => {
   it('Creates enhanced log function', () => {
-    assert.ok(typeof global.log === 'function');
+    ok(typeof global.log === 'function');
   });
 
   it('Splits string at new lines', () => {
     var str = 'ab\nc\r\ndd\n\ne\r';
-    assert.strictEqual(O.sanl(str).join(','), 'ab,c,dd,,e,');
-    assert.strictEqual(O.sanll(str).join(','), 'ab\nc\r\ndd,e\r');
+    eq(O.sanl(str).join(','), 'ab,c,dd,,e,');
+    eq(O.sanll(str).join(','), 'ab\nc\r\ndd,e\r');
   });
 
   it('Capitalizes string', () => {
     var str = 'abCd';
-    assert.strictEqual(O.cap(str), 'AbCd');
-    assert.strictEqual(O.cap(str, 0), 'AbCd');
-    assert.strictEqual(O.cap(str, 1), 'Abcd');
+    eq(O.cap(str), 'AbCd');
+    eq(O.cap(str, 0), 'AbCd');
+    eq(O.cap(str, 1), 'Abcd');
   });
 
   it('Indents string', () => {
     var str = 'abc';
-    assert.strictEqual(O.indent(str, 0), 'abc');
-    assert.strictEqual(O.indent(str, 1), '  abc');
-    assert.strictEqual(O.indent(str, 2), '    abc');
+    eq(O.indent(str, 0), `${' '.repeat(0)}abc`);
+    eq(O.indent(str, 1), `${' '.repeat(2)}abc`);
+    eq(O.indent(str, 2), `${' '.repeat(4)}abc`);
   });
 });
 
 describe('Array functions', () => {
   it('Creates array', () => {
     var arr = O.ca(3, i => i + 2);
-    assert.ok(Array.isArray(arr));
-    assert.strictEqual(arr.length, 3);
-    assert.strictEqual(arr.join(','), '2,3,4');
+    ok(Array.isArray(arr));
+    eq(arr.length, 3);
+    eq(arr.join(','), '2,3,4');
   });
 
   it('Creates array asynchronously', done => {
     O.caa(4, i => new Promise(res => {
       setTimeout(() => res(i - 1));
     })).then(arr => {
-      assert.ok(Array.isArray(arr));
-      assert.strictEqual(arr.length, 4);
-      assert.strictEqual(arr.join(','), '-1,0,1,2');
+      ok(Array.isArray(arr));
+      eq(arr.length, 4);
+      eq(arr.join(','), '-1,0,1,2');
       done();
     });
   });
@@ -57,7 +60,7 @@ describe('Array functions', () => {
     var permutations = new Set();
     var maxSteps = 1e3;
 
-    assert.ok(Array.isArray(O.shuffle(arr)));
+    ok(Array.isArray(O.shuffle(arr)));
 
     for(var i = 0; i !== maxSteps; i++){
       O.shuffle(arr);
@@ -65,28 +68,28 @@ describe('Array functions', () => {
       if(permutations.size === 6) break;
     }
 
-    assert.strictEqual(permutations.size, 6);
+    eq(permutations.size, 6);
   });
 
   it('Flattens array', () => {
     var arr = [[1, 2], [3, [4, [[5]], [6], [[]], [], 7]], 8];
     var flatten = O.flatten(arr);
 
-    assert.ok(Array.isArray(flatten));
-    assert.strictEqual(flatten.length, 8);
+    ok(Array.isArray(flatten));
+    eq(flatten.length, 8);
 
     flatten.forEach((val, index) => {
-      assert.strictEqual(val, index + 1);
+      eq(val, index + 1);
     })
   });
 
   it('Gets the last element of array', () => {
     var arr = [1, 103, '57', 12];
-    assert.strictEqual(O.last(arr), 12);
+    eq(O.last(arr), 12);
     arr.pop()
-    assert.strictEqual(O.last(arr), '57');
+    eq(O.last(arr), '57');
     arr.length++;
-    assert.strictEqual(O.last(arr), undefined);
+    eq(O.last(arr), undefined);
   });
 });
 
@@ -97,13 +100,13 @@ describe('Random number generator', () => {
 
     for(var i = 0; i !== maxSteps; i++){
       var val = O.random();
-      assert.strictEqual(typeof val, 'number');
-      assert.ok(val >= 0);
-      assert.ok(val < 1);
+      eq(typeof val, 'number');
+      ok(val >= 0);
+      ok(val < 1);
       vals.add(val);
       if(vals.size === 50) break;
     }
-    assert.strictEqual(vals.size, 50);
+    eq(vals.size, 50);
   });
 
   it('Generates random integer in custom range', () => {
@@ -112,14 +115,14 @@ describe('Random number generator', () => {
 
     for(var i = 0; i !== maxSteps; i++){
       var val = O.rand(3, 7);
-      assert.strictEqual(typeof val, 'number');
-      assert.strictEqual(val | 0, val);
-      assert.ok(val >= 3);
-      assert.ok(val <= 7);
+      eq(typeof val, 'number');
+      eq(val | 0, val);
+      ok(val >= 3);
+      ok(val <= 7);
       vals.add(val);
       if(vals.size === 5) break;
     }
-    assert.strictEqual(vals.size, 5);
+    eq(vals.size, 5);
   });
 
   it('Generates random double in custom range', () => {
@@ -128,13 +131,13 @@ describe('Random number generator', () => {
 
     for(var i = 0; i !== maxSteps; i++){
       var val = O.randf(7, 7.5);
-      assert.strictEqual(typeof val, 'number');
-      assert.ok(val >= 7);
-      assert.ok(val < 7.5);
+      eq(typeof val, 'number');
+      ok(val >= 7);
+      ok(val < 7.5);
       vals.add(val);
       if(vals.size === 50) break;
     }
-    assert.strictEqual(vals.size, 50);
+    eq(vals.size, 50);
   });
 
   it('Generates random unbounded integer', () => {
@@ -143,12 +146,12 @@ describe('Random number generator', () => {
 
     for(var i = 0; i !== maxSteps; i++){
       var val = O.randInt(10, .9);
-      assert.strictEqual(typeof val, 'number');
-      assert.ok(val >= 10);
+      eq(typeof val, 'number');
+      ok(val >= 10);
       vals.add(val);
       if(vals.size === 5) break;
     }
-    assert.strictEqual(vals.size, 5);
+    eq(vals.size, 5);
   });
 
   it('Selects random element from array', () => {
@@ -158,20 +161,20 @@ describe('Random number generator', () => {
 
     for(var i = 0; i !== maxSteps; i++){
       var val = O.randElem(arr);
-      assert.strictEqual(typeof val, 'object');
+      eq(typeof val, 'object');
       vals.add(val);
       if(vals.size === 4) break;
     }
-    assert.strictEqual(vals.size, 4);
+    eq(vals.size, 4);
 
     vals = new Set();
     for(var i = 0; i !== 4; i++){
       var val = O.randElem(arr, 1);
-      assert.strictEqual(arr.length, 3 - i);
-      assert.strictEqual(typeof val, 'object');
+      eq(arr.length, 3 - i);
+      eq(typeof val, 'object');
       vals.add(val);
     }
-    assert.strictEqual(vals.size, 4);
+    eq(vals.size, 4);
   });
 });
 
@@ -180,51 +183,51 @@ describe('Other functions', () => {
     var arr = [];
 
     O.repeat(5, i => {
-      assert.strictEqual(typeof i, 'number');
+      eq(typeof i, 'number');
       arr.push(i);
     });
-    assert.strictEqual(arr.length, 5);
-    assert.strictEqual(arr.join(','), '0,1,2,3,4');
+    eq(arr.length, 5);
+    eq(arr.join(','), '0,1,2,3,4');
   });
 
   it('Repeats function asynchronously', done => {
     var arr = [];
 
     O.repeata(4, i => new Promise(res => {
-      assert.strictEqual(typeof i, 'number');
+      eq(typeof i, 'number');
       arr.push(i);
       setTimeout(res);
     })).then(() => {
-      assert.strictEqual(arr.length, 4);
-      assert.strictEqual(arr.join(','), '0,1,2,3');
+      eq(arr.length, 4);
+      eq(arr.join(','), '0,1,2,3');
       done();
     });
   });
 
-  it('Bounds number', () => {
-    assert.strictEqual(O.bound(5, 0, 10), 5);
-    assert.strictEqual(O.bound(5, 5, 10), 5);
-    assert.strictEqual(O.bound(5, 0, 5), 5);
-    assert.strictEqual(O.bound(5, 7, 10), 7);
-    assert.strictEqual(O.bound(5, 0, 3), 3);
-    assert.strictEqual(O.bound(-5, 1, 7), 1);
-    assert.strictEqual(O.bound(-5, -3, -1), -3);
-    assert.strictEqual(O.bound(-5, -7, -6), -6);
-    assert.strictEqual(O.bound(0, 1, 1), 1);
-    assert.strictEqual(O.bound(1, 1, 1), 1);
-    assert.strictEqual(O.bound(2, 1, 1), 1);
+  it('Calculates bounded number', () => {
+    eq(O.bound(5, 0, 10), 5);
+    eq(O.bound(5, 5, 10), 5);
+    eq(O.bound(5, 0, 5), 5);
+    eq(O.bound(5, 7, 10), 7);
+    eq(O.bound(5, 0, 3), 3);
+    eq(O.bound(-5, 1, 7), 1);
+    eq(O.bound(-5, -3, -1), -3);
+    eq(O.bound(-5, -7, -6), -6);
+    eq(O.bound(0, 1, 1), 1);
+    eq(O.bound(1, 1, 1), 1);
+    eq(O.bound(2, 1, 1), 1);
   });
 
   it('Converts value to integer', () => {
-    assert.strictEqual(O.int(0), 0);
-    assert.strictEqual(O.int(3), 3);
-    assert.strictEqual(O.int(-5), -5);
-    assert.strictEqual(O.int(11.73), 11);
-    assert.strictEqual(O.int(-9.2), -9);
-    assert.strictEqual(O.int(-9.9), -9);
-    assert.strictEqual(O.int([1]), 0);
-    assert.strictEqual(O.int({}), 0);
-    assert.strictEqual(O.int(global), 0);
+    eq(O.int(0), 0);
+    eq(O.int(3), 3);
+    eq(O.int(-5), -5);
+    eq(O.int(11.73), 11);
+    eq(O.int(-9.2), -9);
+    eq(O.int(-9.9), -9);
+    eq(O.int([1]), 0);
+    eq(O.int({}), 0);
+    eq(O.int(global), 0);
 
     var called = 0;
     var val = {
@@ -233,29 +236,29 @@ describe('Other functions', () => {
       [Symbol.toPrimitive](){ called = 1; throw new Error('Symbol.toPrimitive'); },
     };
 
-    assert.strictEqual(O.int(val), 0);
-    assert.strictEqual(called, 0);
+    eq(O.int(val), 0);
+    eq(called, 0);
   });
 
   it('Creates color from HSV', () => {
     var col1 = O.hsv(0);
-    assert.ok(col1 instanceof Uint8Array);
-    assert.strictEqual(col1.length, 3);
-    assert.strictEqual(col1[0], 255);
-    assert.strictEqual(col1[1], 0);
-    assert.strictEqual(col1[2], 0);
+    ok(col1 instanceof Uint8Array);
+    eq(col1.length, 3);
+    eq(col1[0], 255);
+    eq(col1[1], 0);
+    eq(col1[2], 0);
 
     var col2 = O.hsv(1 / 6, col1);
-    assert.strictEqual(col2, col1);
-    assert.strictEqual(col2.length, 3);
-    assert.strictEqual(col2[0], 255);
-    assert.strictEqual(col2[1], 255);
-    assert.strictEqual(col2[2], 0);
+    eq(col2, col1);
+    eq(col2.length, 3);
+    eq(col2[0], 255);
+    eq(col2[1], 255);
+    eq(col2[2], 0);
 
-    assert.strictEqual(O.hsv(2 / 6).join(','), '0,255,0');
-    assert.strictEqual(O.hsv(3 / 6).join(','), '0,255,255');
-    assert.strictEqual(O.hsv(4 / 6).join(','), '0,0,255');
-    assert.strictEqual(O.hsv(5 / 6).join(','), '255,0,255');
-    assert.strictEqual(O.hsv(6 / 6).join(','), '255,0,0');
+    eq(O.hsv(2 / 6).join(','), '0,255,0');
+    eq(O.hsv(3 / 6).join(','), '0,255,255');
+    eq(O.hsv(4 / 6).join(','), '0,0,255');
+    eq(O.hsv(5 / 6).join(','), '255,0,255');
+    eq(O.hsv(6 / 6).join(','), '255,0,0');
   });
 });

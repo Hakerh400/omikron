@@ -1,4 +1,6 @@
 @echo off
 cls
 
-call node ../JavaScript/github/main.js O
+git add .
+git commit -m commit
+git push
