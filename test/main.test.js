@@ -3,8 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
-const O = require('..');
 const jstest = require('@hakerh400/jstest');
+const O = require('..');
 
 const ok = assert.ok;
 const eq = assert.strictEqual;
