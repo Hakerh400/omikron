@@ -2053,6 +2053,15 @@ const O = {
     return O.doc.getElementById(selector);
   },
 
+  qs(parent, selector=null){
+    if(selector === null){
+      selector = parent;
+      parent = O.doc;
+    }
+
+    return parent.querySelector(selector);
+  },
+
   qsa(parent, selector=null){
     if(selector === null){
       selector = parent;
@@ -2475,7 +2484,7 @@ const O = {
       }
 
       const rstr = String(val);
-      const reg = new RegExp(`^${rstr.slice(1, rstr.length - 1)}`);
+      const reg = new RegExp(`^(?:${rstr.slice(1, rstr.length - 1)})`);
       regs.push(reg);
     });
 
