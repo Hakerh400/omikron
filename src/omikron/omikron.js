@@ -2469,6 +2469,13 @@ const O = {
     }
   },
 
+  str2bits(str, pad=0){
+    return str.split('').map(char => {
+      const s = O.rev(O.cc(char).toString(2).padStart(8, '0'))
+      return pad ? `${s}0` : s;
+    }).join('');
+  },
+
   tokenize(str, tokens, firstMatch=1, throwOnError=0){
     const tlen = tokens.length;
     const len = tlen >> 1;
