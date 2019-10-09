@@ -1741,6 +1741,7 @@ const O = {
   pi2: Math.PI * 2,
   pih: Math.PI / 2,
   pi3: Math.PI * 3,
+  pi4: Math.PI / 4,
   pi32: Math.PI * 3 / 2,
   pi34: Math.PI * 3 / 4,
 
@@ -2167,8 +2168,12 @@ const O = {
     g.strokeStyle = 'black';
     g.fillRect(0, 0, w, h);
 
-    if(enhanced)
+    if(enhanced){
       g = new O.EnhancedRenderingContext(g);
+    }else{
+      g.textBaseline = 'middle';
+      g.textAlign = 'center';
+    }
 
     return {
       g, w, h,
@@ -2448,11 +2453,12 @@ const O = {
 
   ftext(str){
     let lines = O.sanl(str);
-    lines = lines.slice(1, lines.length - 1);
+    if(lines.length !== 0 && /^\s*$/.test(lines[0])) lines.shift();
+    if(lines.length !== 0 && /^\s*$/.test(O.last(lines))) lines.pop();
 
     const pad = lines
       .filter(line => line.trim().length !== 0)
-      .reduce((pad, line, i) => Math.min(pad, line.match(/^\s+/)[0].length), Infinity);
+      .reduce((pad, line, i) => Math.min(pad, line.match(/^\s*/)[0].length), Infinity);
 
     return lines.map(line => line.slice(pad)).join('\n');
   },
@@ -2469,10 +2475,33 @@ const O = {
     }
   },
 
+  buf2bits(buf, pad=0){
+    return Array.from(buf).map(byte => {
+      const s = O.rev(byte.toString(2).padStart(8, '0'));
+      return pad ? `${s}0` : s;
+    }).join('');
+  },
+
   str2bits(str, pad=0){
     return str.split('').map(char => {
-      const s = O.rev(O.cc(char).toString(2).padStart(8, '0'))
+      const s = O.rev(O.cc(char).toString(2).padStart(8, '0'));
       return pad ? `${s}0` : s;
+    }).join('');
+  },
+
+  bits2buf(bits, pad=0){
+    const reg = new RegExp(`[01]{${pad ? 16 : 8}}`, 'g');
+    return O.Buffer.from(O.match(bits.replace(/[^01]/g, ''), reg).map(bits => {
+      bits = pad ? O.match(bits, /[01]{2}/g).map(a => a[1]) : bits.split('');
+      return parseInt(bits.reverse().join(''), 2);
+    }));
+  },
+
+  bits2str(bits, pad=0){
+    const reg = new RegExp(`[01]{${pad ? 16 : 8}}`, 'g');
+    return O.match(bits.replace(/[^01]/g, ''), reg).map(bits => {
+      bits = pad ? O.match(bits, /[01]{2}/g).map(a => a[1]) : bits.split('');
+      return O.sfcc(parseInt(bits.reverse().join(''), 2));
     }).join('');
   },
 
@@ -2601,6 +2630,12 @@ const O = {
   arr2obj(arr, val=1){
     const obj = O.obj();
     for(const key of arr) obj[key] = val;
+    return obj;
+  },
+
+  str2obj(str, val=1){
+    const obj = O.obj();
+    for(const char of str) obj[char] = val;
     return obj;
   },
 
@@ -2744,15 +2779,15 @@ const O = {
 
   *repeatg(num, func){
     for(var i = 0; i !== num; i++)
-      yield [i, i / num, num];
+      yield i;
   },
 
-  sleep(time){
+  sleep(time=0){
     const t = O.now;
     while(O.now - t < time);
   },
 
-  sleepa(time){
+  sleepa(time=0){
     return new Promise(res => {
       setTimeout(res, time);
     });
@@ -2775,8 +2810,8 @@ const O = {
   },
 
   hsv(val, col=new Uint8Array(3)){
-    var v = Math.round(val * (256 * 6 - 1)) | 0;
-    var h = v & 255;
+    const v = Math.round((val % 1 + 1) % 1 * (256 * 6 - 1)) | 0;
+    const h = v & 255;
 
     if(v < 256) col[2] = 0, col[0] = 255, col[1] = h;
     else if(v < 256 * 2) col[2] = 0, col[1] = 255, col[0] = 255 - h;
@@ -2885,18 +2920,6 @@ const O = {
     const match = str.match(reg);
     if(match === null) return [];
     return match;
-  },
-
-  bits2buf(str){
-    str = str.replace(/[^01]/g, '');
-
-    const arr = [];
-    const ss = O.match(str, /.{8}|.+/g);
-
-    for(const s of ss)
-      arr.push(parseInt(O.rev(s), 2));
-
-    return O.Buffer.from(arr);
   },
 
   date(date=O.now){
