@@ -1,14 +1,140 @@
 'use strict';
 
+class Set2D{
+  static #sym = Symbol();
+  #d = Set2D.obj();
+
+  constructor(iterable=null){
+    if(iterable !== null)
+      for(const [x, y] of iterable)
+        this.add(x, y);
+  }
+
+  static obj(){
+    const obj = O.obj();
+    obj[this.#sym] = 0;
+    return obj;
+  }
+
+  add(x, y){
+    const d = this.#d;
+    
+    if(y in d){
+      if(x in d[y]) return this;
+      d[y][Set2D.#sym]++;
+    }else{
+      d[y] = Set2D.obj();
+    }
+    
+    d[y][x] = 1;
+    return this;
+  }
+
+  has(x, y){
+    const d = this.#d;
+    return y in d && x in d[y];
+  }
+
+  delete(x, y){
+    const d = this.#d;
+    const sym = Set2D.#sym;
+
+    if(!(y in d && x in d[y])) return 0;
+
+    if(--d[y][this.#sym] === 0) delete d[y];
+    else delete d[y][x];
+
+    return 1;
+  }
+
+  *[Symbol.iterator](){
+    const d = this.#d;
+
+    for(const y in d){
+      const yn = y | 0;
+      const row = d[y];
+      for(const x in row) yield [x | 0, yn];
+    }
+  }
+}
+
 class Color extends Uint8ClampedArray{
+  static #g = null;
+
   constructor(r, g, b){
     super(3);
 
     this.set(r, g, b);
   }
 
+  static getCtx(){
+    const ctx = this.#g;
+    if(ctx !== null) return ctx;
+
+    if(!(O.isBrowser || O.isElectron))
+      throw new TypeError('This functionality is available only in a browser or Electron');
+    
+    const g = document.createElement('canvas').getContext('2d');
+    this.#g = g;
+
+    return g;
+  }
+
+  static isColValid(col){
+    col = String(col);
+    const g = this.getCtx();
+
+    g.fillStyle = '#000000';
+    g.fillStyle = col;
+    const c1 = g.fillStyle;
+
+    g.fillStyle = '#000001';
+    g.fillStyle = col;
+    const c2 = g.fillStyle;
+
+    return c1 === c2;
+  }
+
+  static isColNorm(col){
+    col = String(col);
+    if(!this.isColValid(col)) return 0;
+    return this.colNorm(col) === col;
+  }
+
+  static col2rgb(col){
+    col = String(col);
+    if(!this.isColValid(col)) return null;
+    const g = this.getCtx();
+
+    const str = g.fillStyle;
+    const rgb = O.Buffer.alloc(3);
+
+    rgb[0] = parseInt(str.slice(1, 3), 16);
+    rgb[1] = parseInt(str.slice(3, 5), 16);
+    rgb[2] = parseInt(str.slice(5, 7), 16);
+
+    return rgb;
+  }
+
+  static rgb2col(rgb){
+    return `#${rgb[0].toString(16).padStart(2, '0')
+      }${rgb[1].toString(16).padStart(2, '0')
+      }${rgb[2].toString(16).padStart(2, '0')}`;
+  }
+
+  static colNorm(col){
+    col = String(col);
+    if(!this.isColValid(col)) return null;
+    const g = this.getCtx();
+    return g.fillStyle;
+  }
+
   static from(rgb){
     return new O.Color(rgb[0], rgb[1], rgb[2]);
+  }
+
+  static hsv(k){
+    return O.Color.from(O.hsv(k));
   }
 
   static rand(hsv=0){
@@ -65,7 +191,7 @@ class Color extends Uint8ClampedArray{
 }
 
 class ImageData{
-  constructor(g=null, clear=false){
+  constructor(g=null, clear=0){
     this.g = null;
 
     this.w = null;
@@ -85,7 +211,7 @@ class ImageData{
     this.h = g.canvas.height;
   }
 
-  fetch(g=this.g, clear=false){
+  fetch(g=this.g, clear=0){
     if(g !== this.g) this.setG(g);
 
     this.imgd = g.getImageData(0, 0, this.w, this.h);
@@ -265,7 +391,7 @@ class Grid{
     if(d === null){
       d = O.ca(h, y => {
         return O.ca(w, x =>{
-          if(func === null) return O.obj();
+          if(func === null) return null;
           return func(x, y);
         });
       });
@@ -524,7 +650,7 @@ class Grid{
     const {w, h} = this;
 
     if(!this.includes(x, y)){
-      if(!wrap) return null;
+      if(!wrap) return;
       x = ((x % w) + w) % w;
       y = ((y % h) + h) % h;
     }
@@ -1745,8 +1871,8 @@ const O = {
   pi32: Math.PI * 3 / 2,
   pi34: Math.PI * 3 / 4,
 
-  iw: null,
-  ih: null,
+  get iw(){ return innerWidth},
+  get ih(){ return innerHeight},
 
   static: Symbol('static'),
   project: null,
@@ -1775,7 +1901,7 @@ const O = {
 
   // Global data
 
-  glob: null,
+  glob: Object.create(null),
 
   // Time simulation
 
@@ -1790,6 +1916,7 @@ const O = {
 
   // Classes
 
+  Set2D,
   Color,
   ImageData,
   EventEmitter,
@@ -1821,9 +1948,6 @@ const O = {
     if(isBrowser){
       if(CHROME_ONLY && global.navigator.vendor !== 'Google Inc.')
         return O.error('Please use Chrome.');
-
-      O.iw = window.innerWidth;
-      O.ih = window.innerHeight;
 
       if(!isElectron){
         global.global = global;
@@ -2177,11 +2301,24 @@ const O = {
 
     return {
       g, w, h,
-      wh : w / 2,
-      hh : h / 2,
       w1: w - 1,
       h1: h - 1,
+      wh: w / 2,
+      hh: h / 2,
+      whn: w >> 1,
+      hhn: h >> 1,
     };
+  },
+
+  addStyle(pth){
+    const style = O.ce(O.head, 'style');
+    
+    return new Promise(res => {
+      O.rfLocal(pth, (a, b) => {
+        style.innerHTML = b;
+        res();
+      });
+    });
   },
 
   /*
@@ -2550,7 +2687,7 @@ const O = {
 
       if(match === null){
         const i = str.search(/[\r\n]/);
-        const s = i !== -i ? str.slice(0, i) : str;
+        const s = i !== -1 ? str.slice(0, i) : str;
 
         if(throwOnError) throw new SyntaxError(`Invalid syntax near ${O.sf(s)}`);
 
@@ -2743,6 +2880,15 @@ const O = {
     }
   },
 
+  randRad(radius){
+    return O.randf(-radius, radius);
+  },
+
+  randDiam(diameter){
+    const radius = diameter / 2;
+    return O.randf(-radius, radius);
+  },
+
   randElem(arr, splice=0, fast=0){
     const index = O.rand(arr.length);
 
@@ -2763,9 +2909,96 @@ const O = {
     return buf;
   },
 
-  /*
-    Other functions
-  */
+  // Canvas functions
+
+  fill(g, x, y, col){
+    const {width: w, height: h} = g.canvas;
+    if(x < 0 || y < 0 || x >= w || y >= h) return;
+
+    const w1 = w - 1;
+    const h1 = h - 1;
+
+    const cNew = O.Color.col2rgb(col);
+    if(cNew === null) throw new TypeError('Invalid color');
+
+    const d = new O.ImageData(g);
+    const cOld = O.Buffer.alloc(3);
+
+    d.get(x, y, cOld);
+    if(cNew.equals(cOld)) return;
+
+    const cAux = O.Buffer.alloc(3);
+    const stack = [x, y];
+    const visited = new O.Set2D([stack]);
+
+    while(stack.length !== 0){
+      const y = stack.pop();
+      const x = stack.pop();
+
+      d.set(x, y, cNew);
+
+      if(y !== 0 && !visited.has(x, y - 1)){
+        visited.add(x, y - 1);
+        d.get(x, y - 1, cAux);
+        if(cAux.equals(cOld)) stack.push(x, y - 1);
+      }
+
+      if(x !== w1 && !visited.has(x + 1, y)){
+        visited.add(x + 1, y);
+        d.get(x + 1, y, cAux);
+        if(cAux.equals(cOld)) stack.push(x + 1, y);
+      }
+
+      if(y !== h && !visited.has(x, y + 1)){
+        visited.add(x, y + 1);
+        d.get(x, y + 1, cAux);
+        if(cAux.equals(cOld)) stack.push(x, y + 1);
+      }
+
+      if(x !== 0 && !visited.has(x - 1, y)){
+        visited.add(x - 1, y);
+        d.get(x - 1, y, cAux);
+        if(cAux.equals(cOld)) stack.push(x - 1, y);
+      }
+    }
+
+    d.put();
+  },
+
+  arc(g, ax, ay, bx, by, k){
+    if(k === 0){
+      g.lineTo(bx, by);
+      return null;
+    }
+
+    const cx = (ax + bx) / 2, cy = (ay + by) / 2;
+    let mx, my;
+
+    if(ay !== by){
+      const dx = cx + (ay - cy) / k;
+      const dy = cy - (ax - cx) / k;
+      const kcd = (dy - cy) / (dx - cx);
+      mx = (
+        (ax * ax + ay * ay - dx * dx - dy * dy) / 2 -
+        (ay - dy) * (cy - kcd * cx)
+      ) / (ax - dx + kcd * (ay - dy));
+      my = kcd * (mx - cx) + cy;
+    }else{
+      const r = O.dist(ax, ay, cx, cy);
+      if(ax > bx) k = 1 / k;
+      mx = cx;
+      my = cy + (k * k + 1) * r * r / (2 * k * r) - k * r;
+    }
+
+    const a1 = Math.atan2(by - my, bx - mx);
+    const a2 = Math.atan2(ay - my, ax - mx);
+
+    g.arc(mx, my, O.dist(mx, my, ax, ay), a2, a1, k < 0);
+
+    return [mx, my];
+  },
+
+  // Other functions
 
   repeat(num, func){
     for(var i = 0; i !== num; i++)
@@ -2780,6 +3013,10 @@ const O = {
   *repeatg(num, func){
     for(var i = 0; i !== num; i++)
       yield i;
+  },
+
+  iteratify(func){
+    return {[Symbol.iterator]: func};
   },
 
   sleep(time=0){
@@ -2833,6 +3070,16 @@ const O = {
     const dx = x2 - x1;
     const dy = y2 - y1;
     return Math.sqrt(dx * dx + dy * dy);
+  },
+
+  dists(x1, y1, x2, y2){
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    return dx * dx + dy * dy;
+  },
+
+  distm(x1, y1, x2, y2){
+    return Math.abs(x2 - x1) + Math.abs(y2 - y1);
   },
 
   enum(arr){
@@ -2950,6 +3197,8 @@ const O = {
   sfcc(cc){ return String.fromCharCode(cc); },
   hex(val, bytesNum){ return val.toString(16).toUpperCase().padStart(bytesNum << 1, '0'); },
   hypot(x, y){ return Math.sqrt(x * x + y * y); },
+  hypots(x, y){ return x * x + y * y; },
+  hypotm(x, y){ return Math.abs(x) + Math.abs(y); },
   sf(val){ return JSON.stringify(val, null, 2); },
   rev(str){ return str.split('').reverse().join(''); },
   has(obj, key){ return Object.hasOwnProperty.call(obj, key); },
@@ -3061,7 +3310,7 @@ const O = {
   },
 
   noimpl(name){
-    throw new TypeError(`Function ${O.sf(name)} is not implemented`);
+    throw new TypeError(`${O.sf(name)} is not implemented`);
   },
 
   /*
