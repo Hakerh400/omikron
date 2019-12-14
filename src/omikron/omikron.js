@@ -894,7 +894,7 @@ class MultidimensionalMap{
       d = d[elem];
     }
 
-    return d[this.end];
+    return this.end in d ? d[this.end] : null;
   }
 
   set(arr, val){
