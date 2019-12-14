@@ -879,7 +879,7 @@ class MultidimensionalMap{
     let {d} = this;
 
     for(const elem of arr){
-      if(!(elem in d)) return false;
+      if(!(elem in d)) return 0;
       d = d[elem];
     }
 
@@ -890,7 +890,7 @@ class MultidimensionalMap{
     let {d} = this;
 
     for(const elem of arr){
-      if(!(elem in d)) return undefined;
+      if(!(elem in d)) return null;
       d = d[elem];
     }
 
@@ -1871,8 +1871,8 @@ const O = {
   pi32: Math.PI * 3 / 2,
   pi34: Math.PI * 3 / 4,
 
-  get iw(){ return innerWidth},
-  get ih(){ return innerHeight},
+  get iw(){ return innerWidth },
+  get ih(){ return innerHeight },
 
   static: Symbol('static'),
   project: null,
