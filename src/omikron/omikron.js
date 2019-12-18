@@ -2615,14 +2615,14 @@ const O = {
   buf2bits(buf, pad=0){
     return Array.from(buf).map(byte => {
       const s = O.rev(byte.toString(2).padStart(8, '0'));
-      return pad ? `${s}0` : s;
+      return pad ? s.replace(/./g, a => `1${a}`) : s;
     }).join('');
   },
 
   str2bits(str, pad=0){
     return str.split('').map(char => {
       const s = O.rev(O.cc(char).toString(2).padStart(8, '0'));
-      return pad ? `${s}0` : s;
+      return pad ? s.replace(/./g, a => `1${a}`) : s;
     }).join('');
   },
 
