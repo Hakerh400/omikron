@@ -1820,6 +1820,36 @@ class Serializable{
   reser(){ return this.deser(new O.Serializer(this.ser().getOutput())); }
 }
 
+class Stringifiable{
+  toStr(){ O.virtual('toStr'); }
+
+  toString(){
+    const stack = [this];
+    let str = '';
+
+    while(stack.length !== 0){
+      const elem = stack.pop();
+
+      if(typeof elem === 'string'){
+        str += elem;
+        continue;
+      }
+
+      const arr = elem.toStr();
+
+      if(typeof arr === 'string'){
+        str += arr;
+        continue;
+      }
+
+      for(let i = arr.length - 1; i !== -1; i--)
+        stack.push(arr[i]);
+    }
+
+    return str;
+  }
+}
+
 class Semaphore{
   constructor(s){
     this.s = s;
@@ -1833,7 +1863,7 @@ class Semaphore{
   wait(){
     if(this.s > 0){
       this.s--;
-      return;
+      return Promise.resolve();
     }
 
     return new Promise(res => {
@@ -1870,6 +1900,7 @@ const O = {
   pi4: Math.PI / 4,
   pi32: Math.PI * 3 / 2,
   pi34: Math.PI * 3 / 4,
+  N: Infinity,
 
   get iw(){ return innerWidth },
   get ih(){ return innerHeight },
@@ -1929,6 +1960,7 @@ const O = {
   IO,
   Serializer,
   Serializable,
+  Stringifiable,
   Semaphore,
 
   init(loadProject=1){
@@ -2034,7 +2066,8 @@ const O = {
   },
 
   overrideConsole(){
-    const {global, isNode, isElectron} = O;
+    const {global} = O;
+    const nodeOrElectron = O.isNode || O.isElectron;
 
     const console = global.console;
     const logOrig = console.log;
@@ -2049,7 +2082,7 @@ const O = {
 
       const indentStr = ' '.repeat(indent << 1);
 
-      if(isNode || isElectron){
+      if(nodeOrElectron){
         let str = O.inspect(args);
 
         str = O.sanl(str).map(line => {
@@ -2088,6 +2121,23 @@ const O = {
     O.log = logFunc;
     global.log = logFunc;
     global.isConsoleOverriden = 1;
+
+    const inspectOptions = nodeOrElectron ? require('util').inspect.defaultOptions : null;
+
+    O.logf = (...args) => {
+      if(!nodeOrElectron) return log(...args);
+
+      const {depth} = inspectOptions;
+      inspectOptions.depth = Number.MAX_SAFE_INTEGER;
+      const result = log(...args);
+      inspectOptions.depth = depth;
+
+      return result;
+    };
+
+    O.logs = (...args) => {
+      log(args.join(' '));
+    };
   },
 
   inspect(arr){
@@ -2314,7 +2364,7 @@ const O = {
     const style = O.ce(O.head, 'style');
     
     return new Promise(res => {
-      O.rfLocal(pth, (a, b) => {
+      O.rf(pth, (a, b) => {
         style.innerHTML = b;
         res();
       });
@@ -2965,7 +3015,7 @@ const O = {
     d.put();
   },
 
-  arc(g, ax, ay, bx, by, k){
+  drawArc(g, ax, ay, bx, by, k){
     if(k === 0){
       g.lineTo(bx, by);
       return null;
@@ -2996,6 +3046,34 @@ const O = {
     g.arc(mx, my, O.dist(mx, my, ax, ay), a2, a1, k < 0);
 
     return [mx, my];
+  },
+
+  drawStar(g, x, y, r1, r2, spikes, rot=0){
+    const {sin, cos} = Math;
+    const {pi2} = O;
+
+    for(let i = 0; i !== spikes; i++){
+      const angle1 = rot + (i / spikes) * pi2;
+      const angle2 = rot + (i + .5) / spikes * pi2;
+
+      g.lineTo(x + cos(angle1) * r2, y + sin(angle1) * r2);
+      g.lineTo(x + cos(angle2) * r1, y + sin(angle2) * r1);
+    }
+
+    g.closePath();
+  },
+
+  drawPolygon(g, x, y, r, verts, rot=0){
+    const {sin, cos} = Math;
+    const {pi2} = O;
+
+    for(let i = 0; i !== verts; i++){
+      const angle = rot + i / verts * pi2;
+
+      g.lineTo(x + cos(angle) * r, y + sin(angle) * r);
+    }
+
+    g.closePath();
   },
 
   // Other functions
