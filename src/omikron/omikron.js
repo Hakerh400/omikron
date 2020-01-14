@@ -1695,7 +1695,7 @@ class Serializer extends IO{
     return num;
   }
 
-  writeInt(num, signed=1){
+  writeInt(num, signed=0){
     const snum = num;
     num = -~Math.abs(num);
 
@@ -1851,7 +1851,7 @@ class Stringifiable{
 }
 
 class Semaphore{
-  constructor(s){
+  constructor(s=1){
     this.s = s;
     this.blocked = [];
   }
@@ -2160,6 +2160,16 @@ const O = {
   },
 
   error(err){
+    if(O.isNode || O.isElectron){
+      process.exitCode = 1;
+
+      if(typeof err === 'string')
+        err = `ERROR: ${err}`;
+      
+      O.exit(err);
+      return;
+    }
+
     if(err instanceof Error) err = err.message;
     console.error(err);
 
@@ -2168,6 +2178,7 @@ const O = {
     O.body.style.background = '#ffffff';
 
     O.title('Error Occured');
+    O.ceText(O.head, '');
     O.ceText(O.body, err);
     O.ceBr(O.body, 2);
     O.ceLink(O.body, 'Home Page', '/');
@@ -3282,6 +3293,7 @@ const O = {
   has(obj, key){ return Object.hasOwnProperty.call(obj, key); },
   desc(obj, key){ return Object.getOwnPropertyDescriptor(obj, key); },
   nproto(obj){ return Object.assign(O.obj(), obj); },
+  sem(s){ return new O.Semaphore(s); },
 
   proto(obj, n=1){
     while(n-- !== 0) obj = Object.getPrototypeOf(obj);
