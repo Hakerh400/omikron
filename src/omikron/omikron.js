@@ -1823,6 +1823,15 @@ class Serializable{
 class Stringifiable{
   toStr(){ O.virtual('toStr'); }
 
+  join(stack, arr, sep){
+    arr.forEach((elem, index) => {
+      if(index !== 0) stack.push(sep);
+      stack.push(elem);
+    });
+
+    return arr;
+  }
+
   toString(){
     const stack = [this];
     let str = '';
@@ -1835,15 +1844,15 @@ class Stringifiable{
         continue;
       }
 
-      const arr = elem.toStr();
+      const val = elem.toStr();
 
-      if(typeof arr === 'string'){
-        str += arr;
+      if(typeof val === 'string'){
+        str += val;
         continue;
       }
 
-      for(let i = arr.length - 1; i !== -1; i--)
-        stack.push(arr[i]);
+      for(let i = val.length - 1; i !== -1; i--)
+        stack.push(val[i]);
     }
 
     return str;
@@ -2160,7 +2169,7 @@ const O = {
   },
 
   error(err){
-    if(O.isNode || O.isElectron){
+    if(O.isNode){
       process.exitCode = 1;
 
       if(typeof err === 'string')
