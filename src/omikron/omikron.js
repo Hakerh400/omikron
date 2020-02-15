@@ -1829,7 +1829,7 @@ class Stringifiable{
       stack.push(elem);
     });
 
-    return arr;
+    return stack;
   }
 
   toString(){
