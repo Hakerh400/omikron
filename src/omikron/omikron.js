@@ -2650,6 +2650,19 @@ const O = {
     return `${str[0].toUpperCase()}${str.substring(1)}`;
   },
 
+  gnum(noun, num){
+    num = BigInt(num);
+
+    if(num !== 1n){
+      if(noun.endsWith('s')) noun += 'e';
+      noun += 's';
+    }
+
+    const nstr = num !== 0n ? String(num) : 'no';
+
+    return `${nstr} ${noun}`;
+  },
+
   chars(start, len, arr=0){
     const cc = O.cc(start);
     const array = O.ca(len, i => O.sfcc(cc + i));
@@ -3298,6 +3311,7 @@ const O = {
   hypots(x, y){ return x * x + y * y; },
   hypotm(x, y){ return Math.abs(x) + Math.abs(y); },
   sf(val){ return JSON.stringify(val, null, 2); },
+  sfa(arr){ return `[${arr.join(', ')}]`; },
   rev(str){ return str.split('').reverse().join(''); },
   has(obj, key){ return Object.hasOwnProperty.call(obj, key); },
   desc(obj, key){ return Object.getOwnPropertyDescriptor(obj, key); },
