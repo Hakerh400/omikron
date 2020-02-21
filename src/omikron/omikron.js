@@ -1911,8 +1911,8 @@ const O = {
   pi34: Math.PI * 3 / 4,
   N: Infinity,
 
-  get iw(){ return innerWidth; },
-  get ih(){ return innerHeight; },
+  get iw(){ return innerWidth },
+  get ih(){ return innerHeight },
 
   static: Symbol('static'),
   project: null,
@@ -1933,10 +1933,6 @@ const O = {
     cache: null,
     remaining: 0,
   },
-
-  // URL
-
-  baseURL: 'https://raw.githubusercontent.com/Hakerh400/browser-projects/master',
 
   // Storage
 
@@ -2031,11 +2027,12 @@ const O = {
         if(!O.projectTest(O.project))
           return O.error(`Illegal project name ${JSON.stringify(O.ascii(O.project))}".`);
 
-        O.req(`${O.baseURL}/projects/${O.project}/main`)//.catch(O.error);
+        // TODO: fix this
+        O.req(`/projects/${O.project}/main`)//.catch(O.error);
       };
 
       if(O.project == null){
-        O.rf(`/projects.txt`, (status, projects) => {
+        O.rf(`projects.txt`, (status, projects) => {
           if(status != 200) return O.error(`Failed to load projects list.`);
 
           projects = O.sortAsc(O.sanl(projects));
@@ -2046,7 +2043,7 @@ const O = {
           O.title('Projects');
 
           projects.forEach((project, index, projects) => {
-            O.ceLink(O.body, O.projectToName(project), `${O.baseURL}/?project=${project}`);
+            O.ceLink(O.body, O.projectToName(project), `/?project=${project}`);
             if(index < projects.length - 1) O.ceBr(O.body);
           });
         });
@@ -2225,7 +2222,7 @@ const O = {
   */
 
   href(){
-    return window.location.href;
+    return window.VIRTUAL_URL || window.location.href;
   },
 
   urlParam(param, defaultVal=null){
@@ -2427,8 +2424,8 @@ const O = {
       }
     };
 
-    if(file.startsWith('/'))
-      file = `${O.baseURL}${file}`;
+    if(file.startsWith('/') && window.VIRTUAL_URL_BASE)
+      file = `${window.VIRTUAL_URL_BASE}${file.substring(1)}`;
 
     xhr.open('GET', O.urlTime(file));
     xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
@@ -2450,7 +2447,7 @@ const O = {
       isBinary = 0;
     }
 
-    O.rf(`${O.baseURL}/projects/${O.project}/${file}`, isBinary, cb);
+    O.rf(`/projects/${O.project}/${file}`, isBinary, cb);
   },
 
   async readFile(file){
@@ -3330,34 +3327,6 @@ const O = {
     const res = O.obj();
     for(const key of O.keys(obj)) res[key] = obj[key]();
     return res;
-  },
-
-  /*
-    Math functions
-  */
-
-  isPrime(num){
-    num = BigInt(num);
-    if(num <= 1n) return 0;
-
-    for(var i = 2n; i < num; i++)
-      if(!(num % i))
-        return 0;
-
-    return 1;
-  },
-
-  nthPrime(index){
-    if(index === 0) return 2n;
-    
-    let num = 2n;
-    index++;
-
-    while(index !== 0)
-      if(O.isPrime(num++))
-        index--;
-
-    return num - 1n;
   },
 
   /*
