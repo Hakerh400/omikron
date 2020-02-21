@@ -2035,7 +2035,7 @@ const O = {
       };
 
       if(O.project == null){
-        O.rf(`projects.txt`, (status, projects) => {
+        O.rf(`/projects.txt`, (status, projects) => {
           if(status != 200) return O.error(`Failed to load projects list.`);
 
           projects = O.sortAsc(O.sanl(projects));
