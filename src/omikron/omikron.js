@@ -1936,7 +1936,7 @@ const O = {
 
   // URL
 
-  baseURL: null,
+  baseURL: 'https://raw.githubusercontent.com/Hakerh400/browser-projects/master/src',
 
   // Storage
 
@@ -1999,8 +1999,6 @@ const O = {
         O.lst = window.localStorage;
         O.sst = window.sessionStorage;
       }
-
-      O.baseURL = location.href.match(/^[^\?\&]+/)[0];
     }
 
     if(isNode || isElectron){
@@ -2227,7 +2225,7 @@ const O = {
   */
 
   href(){
-    return window.VIRTUAL_URL || window.location.href;
+    return window.location.href;
   },
 
   urlParam(param, defaultVal=null){
@@ -2430,7 +2428,7 @@ const O = {
     };
 
     if(file.startsWith('/'))
-      file = `${O.baseURL}${file.substring(1)}`;
+      file = `${O.baseURL}${file}`;
 
     xhr.open('GET', O.urlTime(file));
     xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
