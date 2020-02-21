@@ -1936,7 +1936,7 @@ const O = {
 
   // URL
 
-  baseURL: 'https://raw.githubusercontent.com/Hakerh400/browser-projects/master/src',
+  baseURL: 'https://raw.githubusercontent.com/Hakerh400/browser-projects/master',
 
   // Storage
 
