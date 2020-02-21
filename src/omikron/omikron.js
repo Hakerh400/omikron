@@ -2429,8 +2429,8 @@ const O = {
       }
     };
 
-    if(file.startsWith('/') && window.VIRTUAL_URL_BASE)
-      file = `${window.VIRTUAL_URL_BASE}${file.substring(1)}`;
+    if(file.startsWith('/'))
+      file = `${O.baseURL}${file.substring(1)}`;
 
     xhr.open('GET', O.urlTime(file));
     xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
