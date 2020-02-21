@@ -3335,7 +3335,7 @@ const O = {
 
   isPrime(num){
     num = BigInt(num);
-    if(num <= 1) return 0;
+    if(num <= 1n) return 0;
 
     for(var i = 2n; i < num; i++)
       if(!(num % i))
@@ -3348,6 +3348,7 @@ const O = {
     if(index === 0) return 2n;
     
     let num = 2n;
+    index++;
 
     while(index !== 0)
       if(O.isPrime(num++))
