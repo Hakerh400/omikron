@@ -1911,8 +1911,8 @@ const O = {
   pi34: Math.PI * 3 / 4,
   N: Infinity,
 
-  get iw(){ return innerWidth },
-  get ih(){ return innerHeight },
+  get iw(){ return innerWidth; },
+  get ih(){ return innerHeight; },
 
   static: Symbol('static'),
   project: null,
@@ -3327,6 +3327,33 @@ const O = {
     const res = O.obj();
     for(const key of O.keys(obj)) res[key] = obj[key]();
     return res;
+  },
+
+  /*
+    Math functions
+  */
+
+  isPrime(num){
+    num = BigInt(num);
+    if(num <= 1) return 0;
+
+    for(var i = 2n; i < num; i++)
+      if(!(num % i))
+        return 0;
+
+    return 1;
+  },
+
+  nthPrime(index){
+    if(index === 0) return 2n;
+    
+    let num = 2n;
+
+    while(index !== 0)
+      if(O.isPrime(num++))
+        index--;
+
+    return num - 1n;
   },
 
   /*
