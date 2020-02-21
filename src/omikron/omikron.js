@@ -1934,6 +1934,10 @@ const O = {
     remaining: 0,
   },
 
+  // URL
+
+  baseURL: null,
+
   // Storage
 
   lst: null,
@@ -1995,6 +1999,8 @@ const O = {
         O.lst = window.localStorage;
         O.sst = window.sessionStorage;
       }
+
+      O.baseURL = location.href.match(/^[^\?\&]+/)[0];
     }
 
     if(isNode || isElectron){
@@ -2027,8 +2033,7 @@ const O = {
         if(!O.projectTest(O.project))
           return O.error(`Illegal project name ${JSON.stringify(O.ascii(O.project))}".`);
 
-        // TODO: fix this
-        O.req(`/projects/${O.project}/main`)//.catch(O.error);
+        O.req(`${O.baseURL}/projects/${O.project}/main`)//.catch(O.error);
       };
 
       if(O.project == null){
@@ -2043,7 +2048,7 @@ const O = {
           O.title('Projects');
 
           projects.forEach((project, index, projects) => {
-            O.ceLink(O.body, O.projectToName(project), `/?project=${project}`);
+            O.ceLink(O.body, O.projectToName(project), `${O.baseURL}/?project=${project}`);
             if(index < projects.length - 1) O.ceBr(O.body);
           });
         });
@@ -2447,7 +2452,7 @@ const O = {
       isBinary = 0;
     }
 
-    O.rf(`/projects/${O.project}/${file}`, isBinary, cb);
+    O.rf(`${O.baseURL}/projects/${O.project}/${file}`, isBinary, cb);
   },
 
   async readFile(file){
