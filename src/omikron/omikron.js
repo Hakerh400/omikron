@@ -1832,6 +1832,10 @@ class Stringifiable{
     return stack;
   }
 
+  toJSON(){
+    return this.toString();
+  }
+
   toString(){
     const stack = [this];
     let str = '';
