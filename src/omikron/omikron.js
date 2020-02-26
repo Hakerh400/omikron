@@ -1820,12 +1820,63 @@ class Serializable{
   reser(){ return this.deser(new O.Serializer(this.ser().getOutput())); }
 }
 
-class Stringifiable{
+class Iterable{
+  topDown(func){
+    const stack = [this];
+
+    while(stack.length !== 0){
+      const elem = stack.pop();
+
+      func(elem);
+
+      const arr = elem.iter();
+
+      if(!Array.isArray(arr))
+        continue;
+
+      for(let i = arr.length - 1; i !== -1; i--)
+        stack.push(arr[i]);
+    }
+  }
+
+  bottomUp(func){
+    const stack = [this];
+    const flags = [0];
+
+    while(stack.length !== 0){
+      const elem = O.last(stack);
+
+      if(O.last(flags)){
+        stack.pop();
+        flags.pop();
+        func(elem);
+        continue;
+      }
+
+      O.setLast(flags, 1);
+
+      const arr = elem.iter();
+
+      if(!Array.isArray(arr))
+        continue;
+
+      for(let i = arr.length - 1; i !== -1; i--){
+        stack.push(arr[i]);
+        flags.push(0);
+      }
+    }
+  }
+}
+
+class Stringifiable extends Iterable{
   static tabSize = 2;
   static #inc = Symbol('inc');
   static #dec = Symbol('dec');
 
-  tabSize = Stringifiable.tabSize;
+  #tabSize = Stringifiable.tabSize;
+
+  get tabSize(){ return this.#tabSize; }
+  set tabSize(tabSize){ this.#tabSize = tabSize; }
 
   get inc(){ return Stringifiable.#inc; }
   get dec(){ return Stringifiable.#dec; }
@@ -2013,6 +2064,7 @@ const O = {
   IO,
   Serializer,
   Serializable,
+  Iterable,
   Stringifiable,
   Semaphore,
 
