@@ -1892,6 +1892,9 @@ class Stringifiable{
         stack.push(val[i]);
     }
 
+    if(tab !== 0)
+      throw new TypeError('Unmatched indentation');
+
     return str;
   }
 }
