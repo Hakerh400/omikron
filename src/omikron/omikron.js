@@ -1883,8 +1883,8 @@ class Stringifiable{
 
       const val = elem.toStr();
 
-      if(typeof val === 'string'){
-        append(val);
+      if(!Array.isArray(val)){
+        stack.push(val);
         continue;
       }
 

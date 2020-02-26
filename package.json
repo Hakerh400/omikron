@@ -1,7 +1,7 @@
 {
   "name": "omikron",
   "description": "JavaScript framework",
-  "version": "1.2.20",
+  "version": "1.2.21",
   "author": "Thomas <hakerh403@gmail.com>",
   "main": "index.js",
   "contributors": [],
