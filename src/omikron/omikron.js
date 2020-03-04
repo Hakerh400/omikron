@@ -1831,8 +1831,13 @@ class Iterable{
 
       const arr = elem.iter();
 
-      if(!Array.isArray(arr))
+      if(arr === null)
         continue;
+
+      if(!Array.isArray(arr)){
+        stack.push(arr);
+        continue;
+      }
 
       for(let i = arr.length - 1; i !== -1; i--)
         stack.push(arr[i]);
@@ -1857,8 +1862,13 @@ class Iterable{
 
       const arr = elem.iter();
 
-      if(!Array.isArray(arr))
+      if(arr === null)
         continue;
+
+      if(!Array.isArray(arr)){
+        stack.push(arr);
+        continue;
+      }
 
       for(let i = arr.length - 1; i !== -1; i--){
         stack.push(arr[i]);
@@ -1866,6 +1876,8 @@ class Iterable{
       }
     }
   }
+
+  iter(){ O.virtual('iter'); }
 }
 
 class Stringifiable extends Iterable{
@@ -2092,7 +2104,12 @@ const O = {
         O.sst = window.sessionStorage;
       }
 
-      O.baseURL = O.href.match(/^[^\?]+/)[0];
+      let baseURL = O.href.match(/^[^\?]+/)[0];
+
+      if(baseURL.endsWith('/'))
+        baseURL = baseURL.slice(0, baseURL.length - 1);
+
+      O.baseURL = baseURL;
     }
 
     if(isNode || isElectron){
