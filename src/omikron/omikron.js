@@ -1867,6 +1867,7 @@ class Iterable{
 
       if(!Array.isArray(arr)){
         stack.push(arr);
+        flags.push(0);
         continue;
       }
 
