@@ -3,12 +3,7 @@
 class Set2D{
   static #sym = Symbol();
   #d = Set2D.obj();
-
-  constructor(iterable=null){
-    if(iterable !== null)
-      for(const [x, y] of iterable)
-        this.add(x, y);
-  }
+  #size = 0;
 
   static obj(){
     const obj = O.obj();
@@ -16,17 +11,27 @@ class Set2D{
     return obj;
   }
 
+  constructor(iterable=null){
+    if(iterable !== null)
+      for(const [x, y] of iterable)
+        this.add(x, y);
+  }
+
+  get size(){ return this.#size; }
+
   add(x, y){
     const d = this.#d;
     
     if(y in d){
       if(x in d[y]) return this;
-      d[y][Set2D.#sym]++;
     }else{
       d[y] = Set2D.obj();
     }
     
     d[y][x] = 1;
+    d[y][Set2D.#sym]++;
+    this.#size++;
+    
     return this;
   }
 
@@ -44,6 +49,7 @@ class Set2D{
     if(--d[y][this.#sym] === 0) delete d[y];
     else delete d[y][x];
 
+    this.#size--;
     return 1;
   }
 
