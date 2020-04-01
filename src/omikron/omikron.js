@@ -2207,11 +2207,19 @@ const O = {
   },
 
   overrideConsole(){
-    const {global} = O;
-    const nodeOrElectron = O.isNode || O.isElectron;
+    const {global, isNode, isElectron} = O;
+    const nodeOrElectron = isNode || isElectron;
 
-    const console = global.console;
-    const logOrig = console.log;
+    let logOrig;
+
+    if(O.isNode){
+      const fs = require('fs');
+      const fdOut = process.stdout.fd;
+
+      logOrig = str => fs.writeSync(fdOut, `${str}\n`);
+    }else{
+      logOrig = console.log;
+    }
 
     let indent = 0;
 
