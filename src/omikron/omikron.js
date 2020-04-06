@@ -1508,6 +1508,76 @@ class Buffer extends Uint8Array{
   }
 }
 
+class Comparable{
+  cmp(obj){ O.virtual('cmp'); }
+}
+
+class PriorityQueue{
+  #arr = [null];
+
+  get len(){ return this.#arr.length - 1; }
+  get isEmpty(){ return this.#arr.length === 1; }
+
+  add(elem){
+    const arr = this.#arr;
+    let i = arr.length;
+
+    arr.push(elem);
+
+    while(i !== 1){
+      const j = i >> 1;
+
+      if(arr[i].cmp(arr[j]) >= 0) break;
+
+      const t = arr[i];
+      arr[i] = arr[j];
+      arr[j] = t;
+
+      i = j;
+    }
+
+    return this;
+  }
+
+  pop(){
+    const arr = this.#arr;
+    const first = this.top();
+    const last = arr.pop();
+    const len = arr.length;
+
+    if(len !== 1){
+      let i = 1;
+
+      arr[1] = last;
+
+      while(1){
+        let j = i << 1;
+
+        if(j >= len) break;
+        if(j + 1 !== len && arr[j].cmp(arr[j + 1]) > 0) j++;
+        if(arr[j].cmp(arr[i]) >= 0) break;
+
+        const t = arr[i];
+        arr[i] = arr[j];
+        arr[j] = t;
+
+        i = j;
+      }
+    }
+
+    return first;
+  }
+
+  top(){
+    const arr = this.#arr;
+
+    if(arr.length === 1)
+      throw new TypeError('The queue is empty');
+
+    return arr[1];
+  }
+}
+
 class IO{
   constructor(input='', checksum=0, pad=0){
     let buf = O.Buffer.from(input);
@@ -1902,14 +1972,19 @@ class Stringifiable extends Iterable{
   static tabSize = 2;
   static #inc = Symbol('inc');
   static #dec = Symbol('dec');
+  static #prefixPush = Symbol('prefixPush');
+  static #prefixPop = Symbol('prefixPop');
 
   #tabSize = Stringifiable.tabSize;
+  #prefixes = [];
 
   get tabSize(){ return this.#tabSize; }
   set tabSize(tabSize){ this.#tabSize = tabSize; }
 
   get inc(){ return Stringifiable.#inc; }
   get dec(){ return Stringifiable.#dec; }
+  get prefixPush(){ return Stringifiable.#prefixPush; }
+  get prefixPop(){ return Stringifiable.#prefixPop; }
 
   toStr(){ O.virtual('toStr'); }
 
@@ -1927,17 +2002,34 @@ class Stringifiable extends Iterable{
   }
 
   toString(){
-    const {tabSize, inc, dec} = this;
+    const {tabSize, inc, dec, prefixPush, prefixPop} = this;
+    const prefixes = this.#prefixes;
 
     const stack = [this];
     let str = '';
     let tab = 0;
 
-    const append = s => {
-      if(tab !== 0){
-        const tabStr = ' '.repeat(tab);
-        s = s.replace(/\r\n|\r|\n/g, a => `${a}${tabStr}`);
+    const push = (context, index, val) => {
+      check: {
+        if(typeof val === 'string') break check;
+        if(typeof val === 'symbol') break check;
+        if(val instanceof Stringifiable) break check;
+
+        throw new TypeError(`${
+          context.constructor.name}: Invalid value pushed to the stack${
+          index !== null ? ` (index ${
+          index})` : ''}`);
       }
+
+      stack.push(val);
+    };
+
+    const append = s => {
+      const prefix = `${prefixes.join(' ')}${' '.repeat(tab)}`;
+
+      s = s.replace(/\r\n|\r|\n/g, a => {
+        return `${a}${prefix}`;
+      });
 
       str += s;
     };
@@ -1953,7 +2045,23 @@ class Stringifiable extends Iterable{
       if(elem === dec){
         if(tab === 0)
           throw new TypeError('Indentation cannot be negative');
+
         tab -= tabSize;
+        continue;
+      }
+
+      if(elem === prefixPush){
+        const str = stack.pop();
+
+        if(typeof str !== 'string')
+          throw new TypeError('Prefix must be a string');
+
+        prefixes.push(str);
+        continue;
+      }
+
+      if(elem === prefixPop){
+        prefixes.pop();
         continue;
       }
 
@@ -1965,12 +2073,12 @@ class Stringifiable extends Iterable{
       const val = elem.toStr();
 
       if(!Array.isArray(val)){
-        stack.push(val);
+        push(elem, null, val);
         continue;
       }
 
       for(let i = val.length - 1; i !== -1; i--)
-        stack.push(val[i]);
+        push(elem, i, val[i]);
     }
 
     if(tab !== 0)
@@ -2091,6 +2199,8 @@ const O = {
   MultidimensionalMap,
   EnhancedRenderingContext,
   Buffer,
+  Comparable,
+  PriorityQueue,
   IO,
   Serializer,
   Serializable,
@@ -3081,7 +3191,7 @@ const O = {
     return O.random() * a;
   },
 
-  randInt(start, prob){
+  randInt(start=0, prob=.5){
     let num = start;
     while(O.randf() < prob) num++;
     return num;
