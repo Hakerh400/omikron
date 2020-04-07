@@ -1515,10 +1515,11 @@ class Comparable{
 class PriorityQueue{
   #arr = [null];
 
+  get arr(){ return this.#arr.slice(1); }
   get len(){ return this.#arr.length - 1; }
   get isEmpty(){ return this.#arr.length === 1; }
 
-  add(elem){
+  push(elem){
     const arr = this.#arr;
     let i = arr.length;
 
@@ -1575,6 +1576,14 @@ class PriorityQueue{
       throw new TypeError('The queue is empty');
 
     return arr[1];
+  }
+
+  *[Symbol.iterator](){
+    const arr = this.#arr;
+    const len = arr.length;
+
+    for(let i = 1; i !== len; i++)
+      yield arr[i];
   }
 }
 
