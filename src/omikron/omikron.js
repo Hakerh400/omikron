@@ -2025,7 +2025,7 @@ class Stringifiable extends Iterable{
     };
 
     const append = s => {
-      const prefix = `${prefixes.join(' ')}${' '.repeat(tab)}`;
+      const prefix = `${prefixes.join('')}${' '.repeat(tab)}`;
 
       s = s.replace(/\r\n|\r|\n/g, a => {
         return `${a}${prefix}`;
@@ -3605,6 +3605,27 @@ const O = {
         index--;
 
     return num - 1n;
+  },
+
+  bisect(f){
+    if(f(0n)) return 0n;
+
+    let i = 0n;
+    let j = 1n;
+
+    while(!f(j)){
+      i = j;
+      j <<= 1n;
+    }
+
+    while(j - i !== 1n){
+      const k = i + j >> 1n;
+
+      if(f(k)) j = k;
+      else i = k;
+    }
+
+    return j;
   },
 
   /*
