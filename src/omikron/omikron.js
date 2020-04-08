@@ -3637,6 +3637,27 @@ const O = {
     return j;
   },
 
+  async bisecta(f){
+    if(await f(0n)) return 0n;
+
+    let i = 0n;
+    let j = 1n;
+
+    while(!(await f(j))){
+      i = j;
+      j <<= 1n;
+    }
+
+    while(j - i !== 1n){
+      const k = i + j >> 1n;
+
+      if(await f(k)) j = k;
+      else i = k;
+    }
+
+    return j;
+  },
+
   /*
     Time simulation
   */
