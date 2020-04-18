@@ -3370,6 +3370,19 @@ const O = {
 
   // Other functions
 
+  assert(...args){
+    const len = args.length;
+
+    if(len < 1 || len > 2)
+      throw new TypeError(`Expected 1 or 2 arguments, but got ${len}`);
+
+    if(!args[0]){
+      let msg = `Assertion failed`;
+      if(len === 2) msg += ` ---> ${args[1]}`;
+      throw new Error(msg);
+    }
+  },
+
   repeat(num, func){
     for(var i = 0; i !== num; i++)
       func(i, i / num, num);
