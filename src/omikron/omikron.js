@@ -2130,6 +2130,10 @@ class Semaphore{
   }
 }
 
+class AssertionError extends Error{
+  get name(){ return 'AssertionError'; }
+}
+
 const O = {
   global: null,
   isNode: null,
@@ -2216,6 +2220,7 @@ const O = {
   Iterable,
   Stringifiable,
   Semaphore,
+  AssertionError,
 
   init(loadProject=1){
     const CHROME_ONLY = 0;
@@ -2259,6 +2264,7 @@ const O = {
 
     O.module.cache = O.obj();
     O.modulesPolyfill = O.modulesPolyfill();
+    O.assert.fail = O.assertFail;
 
     /*
       Older versions of Google Chrome had issues with Math.random()
@@ -2639,7 +2645,8 @@ const O = {
     };
   },
 
-  addStyle(pth){
+  addStyle(pth, local=1){
+    if(local) pth = O.localPath(pth);
     const style = O.ce(O.head, 'style');
     
     return new Promise(res => {
@@ -2657,6 +2664,10 @@ const O = {
   urlTime(url){
     var char = url.indexOf('?') !== -1 ? '&' : '?';
     return `${url}${char}_=${O.now}`;
+  },
+
+  localPath(pth){
+    return `${O.baseURL}/projects/${O.project}/${pth}`;
   },
 
   rf(file, isBinary, cb=null){
@@ -2706,7 +2717,7 @@ const O = {
       isBinary = 0;
     }
 
-    O.rf(`${O.baseURL}/projects/${O.project}/${file}`, isBinary, cb);
+    O.rf(O.localPath(file), isBinary, cb);
   },
 
   async readFile(file){
@@ -3379,8 +3390,19 @@ const O = {
     if(!args[0]){
       let msg = `Assertion failed`;
       if(len === 2) msg += ` ---> ${args[1]}`;
-      throw new Error(msg);
+      throw new O.AssertionError(msg);
     }
+  },
+
+  assertFail(...args){
+    const len = args.length;
+
+    if(len > 1)
+      throw new TypeError(`Expected 0 or 1 argument, but got ${len}`);
+
+    let msg = `Assertion failed`;
+    if(len === 1) msg += ` ---> ${args[0]}`;
+    throw new O.AssertionError(msg);
   },
 
   repeat(num, func){
@@ -3715,9 +3737,12 @@ const O = {
 
         join(...pths){
           return pths.reduce((p1, p2) => {
+            p1 = p1.slice(p1.match(/[\/\\]*$/)[0].length);
+            p2 = p2.slice(0, p2.length - p2.match(/^[\/\\]*/)[0].length);
+
             return p1.split(/[\/\\]/).
               concat(p2.split(/[\/\\]/)).
-              join('/').replace(/\/+/g, '/');
+              join('/');
           });
         },
       },
@@ -3764,8 +3789,15 @@ const O = {
     throw new TypeError(`${type} ${O.sf(name)} is virtual`);
   },
 
-  noimpl(name){
-    throw new TypeError(`${O.sf(name)} is not implemented`);
+  noimpl(...args){
+    if(args.length > 1)
+      throw new TypeError(`Expected 0 or 1 argument`);
+
+    throw new TypeError(
+      args.length === 1 ?
+        `${O.sf(name)} is not implemented` :
+        `Not implemented`
+    );
   },
 
   /*
