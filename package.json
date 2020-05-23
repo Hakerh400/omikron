@@ -1,7 +1,7 @@
 {
   "name": "omikron",
   "description": "JavaScript framework",
-  "version": "1.2.30",
+  "version": "1.2.31",
   "author": "Thomas <hakerh403@gmail.com>",
   "main": "index.js",
   "contributors": [],
@@ -19,7 +19,7 @@
     "@hakerh400/jstest": "^1.1.1"
   },
   "engines": {
-    "node": ">=13"
+    "node": ">=14"
   },
   "license": "Unlicense"
 }

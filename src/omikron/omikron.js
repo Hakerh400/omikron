@@ -3062,6 +3062,7 @@ const O = {
   lf(str){ return O.setLineBreak(str, '\n'); },
   crlf(str){ return O.setLineBreak(str, '\r\n'); },
   rev(str){ return str.split('').reverse().join(''); },
+  rept(arr, n){ return O.ca(arr.length * n, i => arr[i % arr.length]); },
 
   /*
     Array functions
@@ -3793,11 +3794,11 @@ const O = {
     if(args.length > 1)
       throw new TypeError(`Expected 0 or 1 argument`);
 
-    throw new TypeError(
-      args.length === 1 ?
-        `${O.sf(name)} is not implemented` :
-        `Not implemented`
-    );
+    const msg = args.length === 1 ?
+      `${O.sf(name)} is not implemented` :
+      `Not implemented`;
+
+    throw new Error(msg);
   },
 
   /*
@@ -4098,7 +4099,11 @@ const O = {
     return {encode, decode};
   })(),
 
-  // Exit
+  // Exceptions
+
+  err(msg){
+    O.exit(`ERROR: ${msg}`);
+  },
 
   exit(...args){
     if(!(O.isNode || O.isElectron))
