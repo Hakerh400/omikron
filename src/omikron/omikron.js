@@ -2029,7 +2029,7 @@ class Stringifiable extends Iterable{
   get prefixPush(){ return Stringifiable.#prefixPush; }
   get prefixPop(){ return Stringifiable.#prefixPop; }
 
-  toStr(){ O.virtual('toStr'); }
+  toStr(arg){ O.virtual('toStr'); }
 
   join(stack, arr, sep){
     arr.forEach((elem, index) => {
@@ -2044,7 +2044,7 @@ class Stringifiable extends Iterable{
     return this.toString();
   }
 
-  toString(){
+  toString(arg=null){
     const {tabSize, inc, dec, prefixPush, prefixPop} = this;
     const prefixes = this.#prefixes;
 
@@ -2113,7 +2113,7 @@ class Stringifiable extends Iterable{
         continue;
       }
 
-      const val = elem.toStr();
+      const val = elem.toStr(arg);
 
       if(!Array.isArray(val)){
         push(elem, null, val);
