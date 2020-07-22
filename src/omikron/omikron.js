@@ -7,7 +7,7 @@ class Set2D{
 
   static obj(){
     const obj = O.obj();
-    obj[this.#sym] = 0;
+    obj[Set2D.#sym] = 0;
     return obj;
   }
 
@@ -42,11 +42,10 @@ class Set2D{
 
   delete(x, y){
     const d = this.#d;
-    const sym = Set2D.#sym;
 
     if(!(y in d && x in d[y])) return 0;
 
-    if(--d[y][this.#sym] === 0) delete d[y];
+    if(--d[y][Set2D.#sym] === 0) delete d[y];
     else delete d[y][x];
 
     this.#size--;
