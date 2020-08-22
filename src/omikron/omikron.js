@@ -1951,6 +1951,38 @@ class Iterable{
 
   get chArr(){ return [...this]; }
 
+  traverse(func){
+    const {kBreak} = this;
+    const stack = [this];
+    const flags = [0];
+
+    while(stack.length !== 0){
+      const elem = O.last(stack);
+
+      if(O.last(flags)){
+        stack.pop();
+        flags.pop();
+
+        const result = func(elem, 1);
+        if(result === kBreak) return 1;
+
+        continue;
+      }
+
+      func(elem, 0);
+      O.setLast(flags, 1);
+
+      const {chNum} = elem;
+
+      for(let i = chNum - 1; i !== -1; i--){
+        stack.push(elem.getCh(i));
+        flags.push(0);
+      }
+    }
+
+    return 0;
+  }
+
   topDown(func){
     const {kCont, kBreak} = this;
     const stack = [this];
