@@ -1,5 +1,11 @@
 'use strict';
 
+const {
+  PI, min, max, abs, floor,
+  ceil, round, sqrt, sin, cos,
+  atan, atan2, clz32,
+} = Math;
+
 class Set2D{
   static #sym = Symbol();
   #d = Set2D.obj();
@@ -63,7 +69,7 @@ class Set2D{
   }
 }
 
-class Map2D{
+class AsyncMap2D{
   constructor(x=null, y=null, val=1){
     this.d = O.obj();
 
@@ -139,35 +145,35 @@ class Map2D{
     return 1;
   }
 
-  iter(func){
+  async iter(func){
     const {d} = this;
 
     for(let y in d)
       for(let x in d[y |= 0])
-        func(x |= 0, y, d[y][x]);
+        await func(x |= 0, y, d[y][x]);
   }
 
-  iterate(func){
-    this.iter(func);
+  async iterate(func){
+    await this.iter(func);
   }
 
-  some(func){
+  async some(func){
     const {d} = this;
 
     for(let y in d)
       for(let x in d[y |= 0])
-        if(func(x |= 0, y, d[y][x]))
+        if(await func(x |= 0, y, d[y][x]))
           return;
   }
 
-  find(v, func){
+  async find(v, func){
     const {d} = this;
 
     for(let y in d){
       for(let x in d[y |= 0]){
         const val = d[y][x |= 0];
 
-        if(func(x, y, val)){
+        if(await func(x, y, val)){
           v.x = x;
           v.y = y;
 
@@ -452,7 +458,7 @@ class Color extends Uint8ClampedArray{
   }
 }
 
-class ImageData{
+class AsyncImageData{
   constructor(g=null, clear=0){
     this.g = null;
 
@@ -552,13 +558,13 @@ class ImageData{
     d[(i | 0) + 2 | 0] = b | 0;
   }
 
-  iter(func, includeAlpha=0){
+  async iter(func, includeAlpha=0){
     const {w, h, d} = this;
 
     if(includeAlpha){
       for(var y = 0, i = 0; y < h; y++){
         for(var x = 0; x < w; x++, i += 4){
-          var col = func(x | 0, y | 0, d[i | 0] | 0, d[(i | 0) + 1 | 0] | 0, d[(i | 0) + 2 | 0] | 0, d[(i | 0) + 3 | 0] | 0);
+          var col = await func(x | 0, y | 0, d[i | 0] | 0, d[(i | 0) + 1 | 0] | 0, d[(i | 0) + 2 | 0] | 0, d[(i | 0) + 3 | 0] | 0);
 
           if(col){
             d[i | 0] = col[0] | 0;
@@ -571,7 +577,7 @@ class ImageData{
     }else{
       for(var y = 0, i = 0; y < h; y++){
         for(var x = 0; x < w; x++, i += 4){
-          var col = func(x | 0, y | 0, d[i | 0] | 0, d[(i | 0) + 1 | 0] | 0, d[(i | 0) + 2 | 0] | 0);
+          var col = await func(x | 0, y | 0, d[i | 0] | 0, d[(i | 0) + 1 | 0] | 0, d[(i | 0) + 2 | 0] | 0);
 
           if(col){
             d[i | 0] = col[0] | 0;
@@ -583,8 +589,8 @@ class ImageData{
     }
   }
 
-  iterate(func, includeAlpha){
-    this.iter(func, includeAlpha);
+  async iterate(func, includeAlpha){
+    await this.iter(func, includeAlpha);
   }
 }
 
@@ -645,7 +651,7 @@ class EventEmitter{
   }
 }
 
-class Grid{
+class AsyncGrid{
   constructor(w, h, func=null, d=null){
     this.w = w;
     this.h = h;
@@ -662,35 +668,35 @@ class Grid{
     this.d = d;
   }
 
-  iter(func){
+  async iter(func){
     const {w, h} = this;
 
     for(let y = 0; y !== h; y++)
       for(let x = 0; x !== w; x++)
-        func(x, y, this.get(x, y));
+        await func(x, y, this.get(x, y));
   }
 
-  iterate(func){
-    this.iter(func);
+  async iterate(func){
+    await this.iter(func);
   }
 
-  some(func){
+  async some(func){
     const {w, h} = this;
 
     for(let y = 0; y !== h; y++)
       for(let x = 0; x !== w; x++)
-        if(func(x, y, this.get(x, y)))
+        if(await func(x, y, this.get(x, y)))
           return 1;
 
     return 0;
   }
 
-  find(v, func){
+  async find(v, func){
     const {w, h} = this;
 
     for(let y = 0; y !== h; y++){
       for(let x = 0; x !== w; x++){
-        if(func(x, y, this.get(x, y))){
+        if(await func(x, y, this.get(x, y))){
           v.x = x;
           v.y = y;
           return 1;
@@ -701,19 +707,19 @@ class Grid{
     return 0;
   }
 
-  count(func){
+  async count(func){
     const {w, h} = this;
     let num = 0;
 
     for(let y = 0; y !== h; y++)
       for(let x = 0; x !== w; x++)
-        if(func(x, y, this.get(x, y)))
+        if(await func(x, y, this.get(x, y)))
           num++;
 
     return num;
   }
 
-  iterAdj(x, y, wrap, func=null){
+  async iterAdj(x, y, wrap, func=null){
     if(func === null){
       func = wrap;
       wrap = 0;
@@ -730,12 +736,12 @@ class Grid{
       queued.remove(x, y);
       visited.add(x, y);
 
-      this.adj(x, y, wrap, (x1, y1, d, dir, wrapped) => {
+      await this.adj(x, y, wrap, async (x1, y1, d, dir, wrapped) => {
         if(d === null) return;
         if(queued.has(x1, y1)) return;
         if(visited.has(x1, y1)) return;
 
-        if(func(x1, y1, d, x, y, dir, wrapped)){
+        if(await func(x1, y1, d, x, y, dir, wrapped)){
           queue.push(x1, y1);
           queued.add(x1, y1);
         }
@@ -743,7 +749,7 @@ class Grid{
     }
   }
 
-  adj(x, y, wrap, func=null){
+  async adj(x, y, wrap, func=null){
     const {w, h} = this;
 
     if(func === null){
@@ -754,14 +760,14 @@ class Grid{
     let wd = 0;
 
     return (
-      func(x, (wd = wrap && y === 0) ? h - 1 : y - 1, this.get(x, y - 1, wrap), 0, wd) ||
-      func((wd = wrap && x === w - 1) ? 0 : x + 1, y, this.get(x + 1, y, wrap), 1, wd) ||
-      func(x, (wd = wrap && y === h - 1) ? 0 : y + 1, this.get(x, y + 1, wrap), 2, wd) ||
-      func((wd = wrap && x === 0) ? w - 1 : x - 1, y, this.get(x - 1, y, wrap), 3, wd)
+      (await func(x, (wd = wrap && y === 0) ? h - 1 : y - 1, this.get(x, y - 1, wrap), 0, wd)) ||
+      (await func((wd = wrap && x === w - 1) ? 0 : x + 1, y, this.get(x + 1, y, wrap), 1, wd)) ||
+      (await func(x, (wd = wrap && y === h - 1) ? 0 : y + 1, this.get(x, y + 1, wrap), 2, wd)) ||
+      (await func((wd = wrap && x === 0) ? w - 1 : x - 1, y, this.get(x - 1, y, wrap), 3, wd))
     );
   }
 
-  adjc(x, y, wrap, func=null){
+  async adjc(x, y, wrap, func=null){
     const {w, h} = this;
 
     if(func === null){
@@ -770,14 +776,14 @@ class Grid{
     }
 
     return (
-      func(wrap && x === 0 ? w - 1 : x - 1, wrap && y === 0 ? h - 1 : y - 1, this.get(x - 1, y - 1, wrap), 0) ||
-      func(wrap && x === w - 1 ? 0 : x + 1, wrap && y === 0 ? h - 1 : y - 1, this.get(x + 1, y - 1, wrap), 1) ||
-      func(wrap && x === 0 ? w - 1 : x - 1, wrap && y === h - 1 ? 0 : y + 1, this.get(x - 1, y + 1, wrap), 2) ||
-      func(wrap && x === w - 1 ? 0 : x + 1, wrap && y === h - 1 ? 0 : y + 1, this.get(x + 1, y + 1, wrap), 3)
+      (await func(wrap && x === 0 ? w - 1 : x - 1, wrap && y === 0 ? h - 1 : y - 1, this.get(x - 1, y - 1, wrap), 0)) ||
+      (await func(wrap && x === w - 1 ? 0 : x + 1, wrap && y === 0 ? h - 1 : y - 1, this.get(x + 1, y - 1, wrap), 1)) ||
+      (await func(wrap && x === 0 ? w - 1 : x - 1, wrap && y === h - 1 ? 0 : y + 1, this.get(x - 1, y + 1, wrap), 2)) ||
+      (await func(wrap && x === w - 1 ? 0 : x + 1, wrap && y === h - 1 ? 0 : y + 1, this.get(x + 1, y + 1, wrap), 3))
     );
   }
 
-  findAdj(x, y, wrap, func=null){
+  async findAdj(x, y, wrap, func=null){
     const {w, h} = this;
 
     if(func === null){
@@ -789,10 +795,10 @@ class Grid{
     let wd;
 
     const found = (
-      func(x, (wd = wrap && y === 0) ? h - 1 : y - 1, this.get(x, y - 1, wrap), dir++, wd) ||
-      func((wd = wrap && x === w - 1) ? 0 : x + 1, y, this.get(x + 1, y, wrap), dir++, wd) ||
-      func(x, (wd = wrap && y === h - 1) ? 0 : y + 1, this.get(x, y + 1, wrap), dir++, wd) ||
-      func((wd = wrap && x === 0) ? w - 1 : x - 1, y, this.get(x - 1, y, wrap), dir++, wd)
+      (await func(x, (wd = wrap && y === 0) ? h - 1 : y - 1, this.get(x, y - 1, wrap), dir++, wd)) ||
+      (await func((wd = wrap && x === w - 1) ? 0 : x + 1, y, this.get(x + 1, y, wrap), dir++, wd)) ||
+      (await func(x, (wd = wrap && y === h - 1) ? 0 : y + 1, this.get(x, y + 1, wrap), dir++, wd)) ||
+      (await func((wd = wrap && x === 0) ? w - 1 : x - 1, y, this.get(x - 1, y, wrap), dir++, wd))
     );
 
     if(!found) return -1;
@@ -819,7 +825,7 @@ class Grid{
     return this.get(v.x, v.y, wrap);
   }
 
-  path(xs, ys, wrap=null, all=null, func=null){
+  async path(xs, ys, wrap=null, all=null, func=null){
     if(func === null){
       if(all === null){
         func = wrap;
@@ -849,7 +855,7 @@ class Grid{
       else
         visited[sp].add(x, y);
 
-      if(this.adj(x, y, wrap, (x1, y1, d, dir, wrapped) => {
+      if(await this.adj(x, y, wrap, async (x1, y1, d, dir, wrapped) => {
         if(dir === dirp) return;
 
         const start = x1 === xs && y1 === ys;
@@ -871,7 +877,7 @@ class Grid{
           if((s in visited) && visited[s].has(x1, y1)) return;
         }
 
-        switch(func(x1, y1, d, x, y, dir, wrapped, p, c, cp)){
+        switch(await func(x1, y1, d, x, y, dir, wrapped, p, c, cp)){
           case 1:
             if(start) break;
             queue.push([x1, y1, p, c, s]);
@@ -892,8 +898,8 @@ class Grid{
     return path;
   }
 
-  findPath(x, y, wrap, all, func){
-    this.path(x, y, wrap, all, func);
+  async findPath(x, y, wrap, all, func){
+    await this.path(x, y, wrap, all, func);
   }
 
   get(x, y, wrap=0, defaultVal=null){
@@ -1075,8 +1081,8 @@ class EnhancedRenderingContext{
       var y2 = q[i + 2];
 
       if(fillMode){
-        if(Math.abs(x1 - x2) === 1) x2 = x1;
-        if(Math.abs(y1 - y2) === 1) y2 = y1;
+        if(abs(x1 - x2) === 1) x2 = x1;
+        if(abs(y1 - y2) === 1) y2 = y1;
       }
 
       if(!type){
@@ -1134,8 +1140,8 @@ class EnhancedRenderingContext{
     if(angle){
       this.rtx = x;
       this.rty = y;
-      this.rcos = Math.cos(angle);
-      this.rsin = -Math.sin(angle);
+      this.rcos = cos(angle);
+      this.rsin = -sin(angle);
     }
   }
 
@@ -1191,7 +1197,7 @@ class EnhancedRenderingContext{
       return;
     }
 
-    this.g.fillRect(Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty), Math.round(w * this.s) + 1, Math.round(h * this.s) + 1);
+    this.g.fillRect(round(x * this.s + this.tx), round(y * this.s + this.ty), round(w * this.s) + 1, round(h * this.s) + 1);
   }
 
   strokeRect(x, y, w, h){
@@ -1202,7 +1208,7 @@ class EnhancedRenderingContext{
       return;
     }
 
-    this.g.strokeRect(Math.round(x * this.s + this.tx) + .5, Math.round(y * this.s + this.ty) + .5, Math.round(w * this.s) + 1, Math.round(h * this.s) + 1);
+    this.g.strokeRect(round(x * this.s + this.tx) + .5, round(y * this.s + this.ty) + .5, round(w * this.s) + 1, round(h * this.s) + 1);
   }
 
   moveTo(x, y){
@@ -1214,7 +1220,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.pointsQueue.push(0, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
+    this.pointsQueue.push(0, round(x * this.s + this.tx), round(y * this.s + this.ty));
   }
 
   lineTo(x, y){
@@ -1226,7 +1232,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.pointsQueue.push(1, Math.round(x * this.s + this.tx), Math.round(y * this.s + this.ty));
+    this.pointsQueue.push(1, round(x * this.s + this.tx), round(y * this.s + this.ty));
   }
 
   arc(x, y, r, a1, a2, acw){
@@ -1246,8 +1252,8 @@ class EnhancedRenderingContext{
     var rr = r * this.s;
     this.arcsQueue.push(this.pointsQueue.length, xx, yy, rr, a1, a2, acw);
 
-    xx += Math.cos(a2) * rr;
-    yy += Math.sin(a2) * rr;
+    xx += cos(a2) * rr;
+    yy += sin(a2) * rr;
     this.pointsQueue.push(0, xx, yy);
   }
 
@@ -1260,7 +1266,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.g.fillText(text, Math.round(x * this.s + this.tx) + 1, Math.round(y * this.s + this.ty) + 1);
+    this.g.fillText(text, round(x * this.s + this.tx) + 1, round(y * this.s + this.ty) + 1);
   }
 
   strokeText(text, x, y){
@@ -1272,7 +1278,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.g.strokeText(text, Math.round(x * this.s + this.tx) + 1, Math.round(y * this.s + this.ty) + 1);
+    this.g.strokeText(text, round(x * this.s + this.tx) + 1, round(y * this.s + this.ty) + 1);
   }
 
   updateFont(){
@@ -1308,9 +1314,9 @@ class EnhancedRenderingContext{
     const s1 = (1 - size) / 2;
     const s2 = 1 - s1;
 
-    const radius = Math.min(size, .5);
+    const radius = min(size, .5);
 
-    const p1 = (1 - Math.sqrt(radius * radius * 4 - size * size)) / 2;
+    const p1 = (1 - sqrt(radius * radius * 4 - size * size)) / 2;
     const p2 = 1 - p1;
 
     const phi1 = (1.9 - size / (radius * 4)) * O.pi;
@@ -1392,7 +1398,7 @@ class EnhancedRenderingContext{
 
     if(foundArc){
       if(dirs !== 0){
-        const a = Math.atan((.5 - p1) / (s2 - .5));
+        const a = atan((.5 - p1) / (s2 - .5));
         const b = O.pi - a;
         const c = (dirs === 1 ? 0 : dirs === 2 ? 1 : dirs === 4 ? 2 : 3) * O.pih;
 
@@ -1543,18 +1549,243 @@ class Buffer extends Uint8Array{
   }
 }
 
-class Comparable{
-  cmp(obj){ O.virtual('cmp'); }
+class AsyncIterable{
+  static #kCont = Symbol('continue');
+  static #kBreak = Symbol('break');
+
+  get kCont(){ return Iterable.#kCont; }
+  get kBreak(){ return Iterable.#kBreak; }
+
+  get chNum(){ O.virtual('chNum'); }
+  async getCh(index){ O.virtual('getCh'); }
+  async setCh(index, val){ O.virtual('getCh'); }
+
+  async getChNum(){ return this.chNum; }
+  get chArr(){ return [...this]; }
+
+  async traverse(func){
+    const {kBreak} = this;
+    const stack = [this];
+    const flags = [0];
+
+    while(stack.length !== 0){
+      const elem = O.last(stack);
+
+      if(O.last(flags)){
+        stack.pop();
+        flags.pop();
+
+        const result = await func(elem, 1);
+        if(result === kBreak) return 1;
+
+        continue;
+      }
+
+      await func(elem, 0);
+      O.setLast(flags, 1);
+
+      const chNum = await elem.getChNum();
+
+      for(let i = chNum - 1; i !== -1; i--){
+        stack.push(await elem.getCh(i));
+        flags.push(0);
+      }
+    }
+
+    return 0;
+  }
+
+  async topDown(func){
+    const {kCont, kBreak} = this;
+    const stack = [this];
+  
+    while(stack.length !== 0){
+      const elem = stack.pop();
+  
+      const result = await func(elem);
+      if(result === kCont) continue;
+      if(result === kBreak) return 1;
+  
+      const chNum = await elem.getChNum();
+  
+      for(let i = chNum - 1; i !== -1; i--)
+        stack.push(await elem.getCh(i));
+    }
+  
+    return 0;
+  }
+
+  async bottomUp(func){
+    const {kBreak} = this;
+    const stack = [this];
+    const flags = [0];
+
+    while(stack.length !== 0){
+      const elem = O.last(stack);
+
+      if(O.last(flags)){
+        stack.pop();
+        flags.pop();
+
+        const result = await func(elem);
+        if(result === kBreak) return 1;
+
+        continue;
+      }
+
+      O.setLast(flags, 1);
+
+      const chNum = await elem.getChNum();
+
+      for(let i = chNum - 1; i !== -1; i--){
+        stack.push(await elem.getCh(i));
+        flags.push(0);
+      }
+    }
+
+    return 0;
+  }
+
+  async *[Symbol.iterator](){
+    const chNum = await this.getChNum();
+
+    for(let i = 0; i !== chNum; i++)
+      yield await this.getCh(i);
+  }
 }
 
-class PriorityQueue{
+class AsyncStringifiable extends AsyncIterable{
+  static tabSize = 2;
+  static #inc = Symbol('inc');
+  static #dec = Symbol('dec');
+  static #prefixPush = Symbol('prefixPush');
+  static #prefixPop = Symbol('prefixPop');
+
+  #tabSize = AsyncStringifiable.tabSize;
+  #prefixes = [];
+
+  get tabSize(){ return this.#tabSize; }
+  set tabSize(tabSize){ this.#tabSize = tabSize; }
+
+  get inc(){ return AsyncStringifiable.#inc; }
+  get dec(){ return AsyncStringifiable.#dec; }
+  get prefixPush(){ return AsyncStringifiable.#prefixPush; }
+  get prefixPop(){ return AsyncStringifiable.#prefixPop; }
+
+  async toStr(arg){ O.virtual('toStr'); }
+
+  join(stack, arr, sep){
+    arr.forEach((elem, index) => {
+      if(index !== 0) stack.push(sep);
+      stack.push(elem);
+    });
+
+    return stack;
+  }
+
+  async toJSON(){
+    return await this.toString();
+  }
+
+  async toString(arg=O.obj()){
+    const {tabSize, inc, dec, prefixPush, prefixPop} = this;
+    const prefixes = this.#prefixes;
+
+    const stack = [this];
+    let str = '';
+    let tab = 0;
+
+    const push = (context, index, val) => {
+      check: {
+        if(typeof val === 'string') break check;
+        if(typeof val === 'symbol') break check;
+        if(val instanceof O.AsyncStringifiable) break check;
+
+        throw new TypeError(`${
+          context.constructor.name}: Invalid value pushed to the stack${
+          index !== null ? ` (index ${
+          index})` : ''}`);
+      }
+
+      stack.push(val);
+    };
+
+    const append = s => {
+      const prefix = `${prefixes.join('')}${' '.repeat(tab)}`;
+
+      s = s.replace(/\r\n|\r|\n/g, a => {
+        return `${a}${prefix}`;
+      });
+
+      str += s;
+    };
+
+    while(stack.length !== 0){
+      const elem = stack.pop();
+
+      if(elem === inc){
+        tab += tabSize;
+        continue;
+      }
+
+      if(elem === dec){
+        if(tab === 0)
+          throw new TypeError('Indentation cannot be negative');
+
+        tab -= tabSize;
+        continue;
+      }
+
+      if(elem === prefixPush){
+        const str = stack.pop();
+
+        if(typeof str !== 'string')
+          throw new TypeError('Prefix must be a string');
+
+        prefixes.push(str);
+        continue;
+      }
+
+      if(elem === prefixPop){
+        prefixes.pop();
+        continue;
+      }
+
+      if(typeof elem === 'string'){
+        append(elem);
+        continue;
+      }
+
+      const val = await elem.toStr(arg);
+
+      if(!Array.isArray(val)){
+        push(elem, null, val);
+        continue;
+      }
+
+      for(let i = val.length - 1; i !== -1; i--)
+        push(elem, i, val[i]);
+    }
+
+    if(tab !== 0)
+      throw new TypeError('Unmatched indentation');
+
+    return str;
+  }
+}
+
+class AsyncComparable extends AsyncStringifiable{
+  async cmp(obj){ O.virtual('cmp'); }
+}
+
+class AsyncPriorityQueue extends AsyncStringifiable{
   #arr = [null];
 
   get arr(){ return this.#arr.slice(1); }
   get len(){ return this.#arr.length - 1; }
   get isEmpty(){ return this.#arr.length === 1; }
 
-  push(elem){
+  async push(elem){
     const arr = this.#arr;
     let i = arr.length;
 
@@ -1563,7 +1794,7 @@ class PriorityQueue{
     while(i !== 1){
       const j = i >> 1;
 
-      if(arr[i].cmp(arr[j]) >= 0) break;
+      if(await arr[i].cmp(arr[j]) >= 0) break;
 
       const t = arr[i];
       arr[i] = arr[j];
@@ -1575,7 +1806,7 @@ class PriorityQueue{
     return this;
   }
 
-  pop(){
+  async pop(){
     const arr = this.#arr;
     const first = this.top();
     const last = arr.pop();
@@ -1590,8 +1821,8 @@ class PriorityQueue{
         let j = i << 1;
 
         if(j >= len) break;
-        if(j + 1 !== len && arr[j].cmp(arr[j + 1]) > 0) j++;
-        if(arr[j].cmp(arr[i]) >= 0) break;
+        if(j + 1 !== len && (await arr[j].cmp(arr[j + 1])) > 0) j++;
+        if((await arr[j].cmp(arr[i])) >= 0) break;
 
         const t = arr[i];
         arr[i] = arr[j];
@@ -1619,6 +1850,283 @@ class PriorityQueue{
 
     for(let i = 1; i !== len; i++)
       yield arr[i];
+  }
+}
+
+class AsyncTreeNode extends AsyncStringifiable{
+  #parent = null;
+  #type = null;
+  #left = null;
+  #right = null;
+
+  constructor(obj){
+    super();
+    this.obj = obj;
+  }
+
+  get parent(){ return this.#parent; }
+  get type(){ return this.#type; }
+  get left(){ return this.#left; }
+  get right(){ return this.#right; }
+
+  set left(node){
+    this.#left = node;
+
+    if(node !== null){
+      node.#parent = this;
+      node.#type = 0;
+    }
+  }
+
+  set right(node){
+    this.#right = node;
+
+    if(node !== null){
+      node.#parent = this;
+      node.#type = 1;
+    }
+  }
+
+  get(type){
+    if(type === 0) return this.#left;
+    return this.#right;
+  }
+
+  set(type, node){
+    if(type === 0) this.left = node;
+    else this.right = node;
+  }
+
+  detach(){
+    this.#type = null;
+    this.#parent = null;
+  }
+
+  get chNum(){ return (this.left !== null) + (this.right !== null); }
+  getCh(i){ return this.i === 0 ? this.left : this.right; }
+
+  toStr(){
+    const f = a => a !== null ? a : '#';
+    return ['(', this.obj, ', ', f(this.left), ', ', f(this.right), ')'];
+  }
+}
+
+class AsyncTree extends AsyncStringifiable{
+  root = null;
+
+  toStr(){
+    const {root} = this;
+    return root !== null ? root : '#';
+  }
+}
+
+class AsyncAVLNode extends AsyncTreeNode{
+  #height = 1;
+
+  get height(){
+    return this.#height;
+  }
+
+  get bfac(){
+    const {left, right} = this;
+
+    return (
+      (right !== null ? right.#height : 0) -
+      (left !== null ? left.#height : 0)
+    );
+  }
+
+  get left(){ return super.left; }
+  get right(){ return super.right; }
+
+  set left(node){
+    super.left = node;
+    this.updateHeight();
+  }
+
+  set right(node){
+    super.right = node;
+    this.updateHeight();
+  }
+
+  updateHeight(){
+    const {left, right} = this;
+
+    return this.#height = max(
+      left !== null ? left.#height : 0,
+      right !== null ? right.#height : 0,
+    ) + 1;
+  }
+
+  async cmp(other){
+    return await this.obj.cmp(other.obj);
+  }
+
+  get needsRebalancing(){
+    this.updateHeight();
+    return abs(this.bfac) === 2;
+  }
+
+  rebalance(){
+    const {bfac} = this;
+    const abfac = abs(bfac);
+    if(abfac !== 2) O.assert.fail();
+
+    const dir1 = bfac < 0 ? 0 : 1;
+    const ch = this.get(dir1);
+    const dir2 = ch.bfac < 0 ? 0 : 1;
+
+    if(dir2 !== dir1)
+      this.set(dir1, ch.rotate(dir2 ^ 1));
+
+    return this.rotate(dir1 ^ 1);
+  }
+
+  rotate(dir){
+    /*
+      dir === 0 ---> left
+      dir === 1 ---> right
+    */
+
+    const d0 = dir;
+    const d1 = dir ^ 1;
+
+    const a = this;
+    const c = a.get(d1);
+    const f = c.get(d0);
+
+    a.set(d1, f);
+    c.set(d0, a);
+
+    return c;
+  }
+}
+
+class AsyncAVLTree extends AsyncTree{
+  async insert(obj){
+    const {root} = this;
+    const nodeNew = new O.AsyncAVLNode(obj);
+
+    if(root === null){
+      this.root = nodeNew;
+      return;
+    }
+
+    let node = root;
+
+    while(1){
+      const dir = (await nodeNew.cmp(node)) <= 0 ? 0 : 1;
+      const next = node.get(dir);
+
+      if(next === null){
+        node.set(dir, nodeNew);
+        break;
+      }
+
+      node = next;
+    }
+
+    for(;node !== null; node = node.parent){
+      if(node.needsRebalancing){
+        this.rebalance(node);
+        break;
+      }
+    }
+  }
+
+  async has(obj){
+    return (await this.find(obj)) !== null;
+  }
+
+  async find(obj){
+    let node = this.root;
+
+    while(node !== null){
+      if(node.obj === obj) return node;
+
+      const dir = (await obj.cmp(node.obj)) <= 0 ? 0 : 1;
+      node = node.get(dir);
+    }
+
+    return null;
+  }
+
+  async remove(obj){
+    let node = await this.find(obj);
+    if(node === null) O.assert.fail();
+
+    const {left, right} = node;
+
+    if(left !== null && right !== null){
+      let pred = left;
+
+      while(1){
+        const {right} = pred;
+        if(right === null) break;
+        pred = right;
+      }
+
+      node.obj = pred.obj;
+      node = pred;
+    }
+
+    this.replace(node.parent, node.type, node.left || node.right);
+
+    for(;node !== null; node = node.parent)
+      if(node.needsRebalancing)
+        node = this.rebalance(node);
+  }
+
+  rebalance(node){
+    const {parent, type} = node;
+    const nodeNew = node.rebalance();
+
+    this.replace(parent, type, nodeNew);
+
+    return nodeNew;
+  }
+
+  replace(parent, type, nodeNew){
+    if(parent === null){
+      if(nodeNew !== null)
+        nodeNew.detach();
+
+      this.root = nodeNew;
+    }else{
+      parent.set(type, nodeNew);
+    }
+  }
+
+  async traverse(func){
+    for(const obj of this)
+      await func(obj);
+  }
+
+  *[Symbol.iterator](){
+    const {root} = this;
+    if(root === null) return;
+
+    const stack = [[this.root, 0]];
+
+    while(stack.length !== 0){
+      const frame = stack.pop();
+      const [node, flag] = frame;
+
+      if(flag === 0){
+        const {left, right} = node;
+
+        if(right !== null) stack.push([right, 0]);
+
+        frame[1] = 1;
+        stack.push(frame);
+
+        if(left !== null) stack.push([left, 0]);
+
+        continue;
+      }
+
+      yield node.obj;
+    }
   }
 }
 
@@ -1757,7 +2265,7 @@ class IO{
   getOutput(checksum=0, encoding=null){
     if((this.outputIndex & 7) !== 0) this.addByte();
 
-    const len = Math.ceil(this.outputIndex / 8);
+    const len = ceil(this.outputIndex / 8);
     let buf = O.Buffer.from(this.output.slice(0, len));
     if(checksum) buf = IO.lock(buf, 1);
 
@@ -1779,7 +2287,7 @@ class Serializer extends IO{
     max |= 0;
     if(max === 0) return;
 
-    let mask = 1 << 31 - Math.clz32(max);
+    let mask = 1 << 31 - clz32(max);
     let limit = 1;
 
     while(mask !== 0){
@@ -1798,7 +2306,7 @@ class Serializer extends IO{
     max |= 0;
     if(max === 0) return 0;
 
-    let mask = 1 << 31 - Math.clz32(max);
+    let mask = 1 << 31 - clz32(max);
     let limit = 1;
     let num = 0;
 
@@ -1817,7 +2325,7 @@ class Serializer extends IO{
 
   writeInt(num, signed=0){
     const snum = num;
-    num = -~Math.abs(num);
+    num = -~abs(num);
 
     while(num !== 1){
       super.write(1);
@@ -1940,230 +2448,6 @@ class Serializable{
   reser(){ return this.deser(new O.Serializer(this.ser().getOutput())); }
 }
 
-class Iterable{
-  static #kCont = Symbol('continue');
-  static #kBreak = Symbol('break');
-
-  get kCont(){ return Iterable.#kCont; }
-  get kBreak(){ return Iterable.#kBreak; }
-
-  get chNum(){ O.virtual('chNum'); }
-  getCh(index){ O.virtual('getCh'); }
-  setCh(index, val){ O.virtual('getCh'); }
-
-  get chArr(){ return [...this]; }
-
-  traverse(func){
-    const {kBreak} = this;
-    const stack = [this];
-    const flags = [0];
-
-    while(stack.length !== 0){
-      const elem = O.last(stack);
-
-      if(O.last(flags)){
-        stack.pop();
-        flags.pop();
-
-        const result = func(elem, 1);
-        if(result === kBreak) return 1;
-
-        continue;
-      }
-
-      func(elem, 0);
-      O.setLast(flags, 1);
-
-      const {chNum} = elem;
-
-      for(let i = chNum - 1; i !== -1; i--){
-        stack.push(elem.getCh(i));
-        flags.push(0);
-      }
-    }
-
-    return 0;
-  }
-
-  topDown(func){
-    const {kCont, kBreak} = this;
-    const stack = [this];
-  
-    while(stack.length !== 0){
-      const elem = stack.pop();
-  
-      const result = func(elem);
-      if(result === kCont) continue;
-      if(result === kBreak) return 1;
-  
-      const {chNum} = elem;
-  
-      for(let i = chNum - 1; i !== -1; i--)
-        stack.push(elem.getCh(i));
-    }
-  
-    return 0;
-  }
-
-  bottomUp(func){
-    const {kBreak} = this;
-    const stack = [this];
-    const flags = [0];
-
-    while(stack.length !== 0){
-      const elem = O.last(stack);
-
-      if(O.last(flags)){
-        stack.pop();
-        flags.pop();
-
-        const result = func(elem);
-        if(result === kBreak) return 1;
-
-        continue;
-      }
-
-      O.setLast(flags, 1);
-
-      const {chNum} = elem;
-
-      for(let i = chNum - 1; i !== -1; i--){
-        stack.push(elem.getCh(i));
-        flags.push(0);
-      }
-    }
-
-    return 0;
-  }
-
-  *[Symbol.iterator](){
-    const {chNum} = this;
-
-    for(let i = 0; i !== chNum; i++)
-      yield this.getCh(i);
-  }
-}
-
-class Stringifiable extends Iterable{
-  static tabSize = 2;
-  static #inc = Symbol('inc');
-  static #dec = Symbol('dec');
-  static #prefixPush = Symbol('prefixPush');
-  static #prefixPop = Symbol('prefixPop');
-
-  #tabSize = Stringifiable.tabSize;
-  #prefixes = [];
-
-  get tabSize(){ return this.#tabSize; }
-  set tabSize(tabSize){ this.#tabSize = tabSize; }
-
-  get inc(){ return Stringifiable.#inc; }
-  get dec(){ return Stringifiable.#dec; }
-  get prefixPush(){ return Stringifiable.#prefixPush; }
-  get prefixPop(){ return Stringifiable.#prefixPop; }
-
-  toStr(arg){ O.virtual('toStr'); }
-
-  join(stack, arr, sep){
-    arr.forEach((elem, index) => {
-      if(index !== 0) stack.push(sep);
-      stack.push(elem);
-    });
-
-    return stack;
-  }
-
-  toJSON(){
-    return this.toString();
-  }
-
-  toString(arg=O.obj()){
-    const {tabSize, inc, dec, prefixPush, prefixPop} = this;
-    const prefixes = this.#prefixes;
-
-    const stack = [this];
-    let str = '';
-    let tab = 0;
-
-    const push = (context, index, val) => {
-      check: {
-        if(typeof val === 'string') break check;
-        if(typeof val === 'symbol') break check;
-        if(val instanceof Stringifiable) break check;
-
-        throw new TypeError(`${
-          context.constructor.name}: Invalid value pushed to the stack${
-          index !== null ? ` (index ${
-          index})` : ''}`);
-      }
-
-      stack.push(val);
-    };
-
-    const append = s => {
-      const prefix = `${prefixes.join('')}${' '.repeat(tab)}`;
-
-      s = s.replace(/\r\n|\r|\n/g, a => {
-        return `${a}${prefix}`;
-      });
-
-      str += s;
-    };
-
-    while(stack.length !== 0){
-      const elem = stack.pop();
-
-      if(elem === inc){
-        tab += tabSize;
-        continue;
-      }
-
-      if(elem === dec){
-        if(tab === 0)
-          throw new TypeError('Indentation cannot be negative');
-
-        tab -= tabSize;
-        continue;
-      }
-
-      if(elem === prefixPush){
-        const str = stack.pop();
-
-        if(typeof str !== 'string')
-          throw new TypeError('Prefix must be a string');
-
-        prefixes.push(str);
-        continue;
-      }
-
-      if(elem === prefixPop){
-        prefixes.pop();
-        continue;
-      }
-
-      if(typeof elem === 'string'){
-        append(elem);
-        continue;
-      }
-
-      const val = elem.toStr(arg);
-
-      if(!Array.isArray(val)){
-        push(elem, null, val);
-        continue;
-      }
-
-      for(let i = val.length - 1; i !== -1; i--)
-        push(elem, i, val[i]);
-    }
-
-    if(tab !== 0)
-      throw new TypeError('Unmatched indentation');
-
-    return str;
-  }
-}
-
 class Semaphore{
   constructor(s=1){
     this.s = s;
@@ -2198,6 +2482,11 @@ class Semaphore{
 }
 
 class AssertionError extends Error{
+  constructor(){
+    super();
+    new Function('debugger')();
+  }
+
   get name(){ return 'AssertionError'; }
 }
 
@@ -2211,13 +2500,13 @@ const O = {
   head: document.head,
   body: document.body,
 
-  pi: Math.PI,
-  pi2: Math.PI * 2,
-  pih: Math.PI / 2,
-  pi3: Math.PI * 3,
-  pi4: Math.PI / 4,
-  pi32: Math.PI * 3 / 2,
-  pi34: Math.PI * 3 / 4,
+  pi: PI,
+  pi2: PI * 2,
+  pih: PI / 2,
+  pi3: PI * 3,
+  pi4: PI / 4,
+  pi32: PI * 3 / 2,
+  pi34: PI * 3 / 4,
   N: Infinity,
 
   get iw(){ return innerWidth; },
@@ -2268,30 +2557,39 @@ const O = {
     enhanceRNG: Symbol('enhanceRNG'),
   },
 
-  // Classes
+  // Constructors
 
-  Set2D,
-  Map2D,
-  Map3D,
-  Color,
-  ImageData,
-  EventEmitter,
-  Grid,
-  MultidimensionalMap,
-  EnhancedRenderingContext,
-  Buffer,
-  Comparable,
-  PriorityQueue,
-  IO,
-  Serializer,
-  Serializable,
-  Iterable,
-  Stringifiable,
-  Semaphore,
-  AssertionError,
+  ctors: {
+    Set2D,
+    AsyncMap2D,
+    Map3D,
+    Color,
+    AsyncImageData,
+    EventEmitter,
+    AsyncGrid,
+    MultidimensionalMap,
+    EnhancedRenderingContext,
+    Buffer,
+    AsyncIterable,
+    AsyncStringifiable,
+    AsyncComparable,
+    AsyncPriorityQueue,
+    AsyncTreeNode,
+    AsyncTree,
+    AsyncAVLNode,
+    AsyncAVLTree,
+    IO,
+    Serializer,
+    Serializable,
+    Semaphore,
+    AssertionError,
+  },
 
   init(loadProject=1){
     const CHROME_ONLY = 0;
+
+    const {ctors} = O;
+    Object.assign(O, ctors);
 
     O.glob = O.obj();
 
@@ -2334,14 +2632,39 @@ const O = {
     O.modulesPolyfill = O.modulesPolyfill();
     O.assert.fail = O.assertFail;
 
-    /*
-      Older versions of Google Chrome had issues with Math.random()
-      Ref: https://bugs.chromium.org/p/v8/issues/detail?id=8212
-      Function O.enhanceRNG creates cryptographically secure
-      random number generator that depends on current time in
-      milliseconds and internal 256-bit state.
-    */
-    // O.enhanceRNG(O.symbols.enhanceRNG);
+    // Syncify constructors
+    {
+      const header = O.ftext(`
+        'use strict';
+
+        const {
+          PI, min, max, abs, floor,
+          ceil, round, sqrt, sin, cos,
+          atan, clz32,
+        } = Math;
+      `);
+
+      for(const name of O.keys(ctors)){
+        if(!name.startsWith('Async')) continue;
+
+        const ctor = ctors[name];
+        const nameNew = name.replace(/^Async/, '');
+        const src = ctor.toString();
+
+        const srcNew = src.
+          replace(/^[^\r\n]+\bextends /, a => `${a}O.`).
+          replace(/\bAsync([a-zA-z0-9]+)/g, (a, b) => b).
+          replace(/\b(async|await)\b ?/g, '');
+
+        const ctorNew = new Function(
+          'O',
+          `${header}\n\n${srcNew}\n\nreturn ${nameNew};`,
+        )(O);
+
+        ctors[nameNew] = ctorNew;
+        O[nameNew] = ctorNew;
+      }
+    }
 
     if(loadProject){
       const mainProject = 'main';
@@ -2484,6 +2807,7 @@ const O = {
 
   logb(){
     log(`\n${'='.repeat(100)}\n`);
+    if(O.isBrowser) log();
   },
 
   inspect(arr){
@@ -3033,7 +3357,7 @@ const O = {
 
     const pad = lines
       .filter(line => line.trim().length !== 0)
-      .reduce((pad, line, i) => Math.min(pad, line.match(/^\s*/)[0].length), Infinity);
+      .reduce((pad, line, i) => min(pad, line.match(/^\s*/)[0].length), Infinity);
 
     return lines.map(line => line.slice(pad)).join('\n');
   },
@@ -3429,8 +3753,8 @@ const O = {
       my = cy + (k * k + 1) * r * r / (2 * k * r) - k * r;
     }
 
-    const a1 = Math.atan2(by - my, bx - mx);
-    const a2 = Math.atan2(ay - my, ax - mx);
+    const a1 = atan2(by - my, bx - mx);
+    const a2 = atan2(ay - my, ax - mx);
 
     g.arc(mx, my, O.dist(mx, my, ax, ay), a2, a1, k < 0);
 
@@ -3524,6 +3848,38 @@ const O = {
   wait(time){ return O.sleep(time); },
   waita(time){ return O.sleepa(time); },
 
+  async forEacha(arr, func){
+    let i = 0;
+
+    for(const elem of arr)
+      await func(elem, i++, arr);
+  },
+
+  async mapa(arr, func){
+    const arrNew = [];
+    let i = 0;
+
+    for(const elem of arr)
+      arrNew.push(await func(elem, i++, arr));
+
+    return arrNew;
+  },
+
+  async filtera(arr, func){
+    const arrNew = [];
+    let i = 0;
+
+    for(const elem of arr)
+      if(await func(elem, i++, arr))
+        arrNew.push(elem);
+
+    return arrNew;
+  },
+
+  async joina(arr, sep){
+    return (await O.mapa(arr, a => a.toString())).join(sep);
+  },
+
   bound(val, min, max){
     if(val < min) return min;
     if(val > max) return max;
@@ -3538,7 +3894,7 @@ const O = {
   },
 
   hsv(val, col=new Uint8Array(3)){
-    const v = Math.round((val % 1 + 1) % 1 * (256 * 6 - 1)) | 0;
+    const v = round((val % 1 + 1) % 1 * (256 * 6 - 1)) | 0;
     const h = v & 255;
 
     if(v < 256) col[2] = 0, col[0] = 255, col[1] = h;
@@ -3560,7 +3916,7 @@ const O = {
   dist(x1, y1, x2, y2){
     const dx = x2 - x1;
     const dy = y2 - y1;
-    return Math.sqrt(dx * dx + dy * dy);
+    return sqrt(dx * dx + dy * dy);
   },
 
   dists(x1, y1, x2, y2){
@@ -3570,7 +3926,7 @@ const O = {
   },
 
   distm(x1, y1, x2, y2){
-    return Math.abs(x2 - x1) + Math.abs(y2 - y1);
+    return abs(x2 - x1) + abs(y2 - y1);
   },
 
   enum(arr){
@@ -3687,9 +4043,9 @@ const O = {
   cc(char, index=0){ return char.charCodeAt(index); },
   sfcc(cc){ return String.fromCharCode(cc); },
   hex(val, bytesNum){ return val.toString(16).toUpperCase().padStart(bytesNum << 1, '0'); },
-  hypot(x, y){ return Math.sqrt(x * x + y * y); },
+  hypot(x, y){ return sqrt(x * x + y * y); },
   hypots(x, y){ return x * x + y * y; },
-  hypotm(x, y){ return Math.abs(x) + Math.abs(y); },
+  hypotm(x, y){ return abs(x) + abs(y); },
   sf(val){ return JSON.stringify(val, null, 2); },
   sfa(arr){ return `[${arr.join(', ')}]`; },
   rev(str){ return str.split('').reverse().join(''); },
