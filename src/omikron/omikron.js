@@ -1538,6 +1538,10 @@ class Buffer extends Uint8Array{
         return Array.from(this).map(a => String.fromCharCode(a)).join('');
         break;
 
+      case 'binary':
+        return Array.from(this).map(a => String.fromCharCode(a)).join('');
+        break;
+
       default:
         this.errEnc(encoding);
         break;
@@ -2323,7 +2327,7 @@ class Serializer extends IO{
     return num;
   }
 
-  writeInt(num, signed=0){
+  writeInt(num, signed=1){
     const snum = num;
     num = -~abs(num);
 
@@ -2481,14 +2485,56 @@ class Semaphore{
   }
 }
 
-class AssertionError extends Error{
+class Process{
   constructor(){
-    super();
-    new Function('debugger')();
+    this.argv = ['', ''];
+  }
+}
+
+class Module{
+  static #main = null;
+
+  static get main(){
+    if(Module.#main === null)
+      Module.#main = this.createMainModule();
+
+    return Module.#main;
   }
 
-  get name(){ return 'AssertionError'; }
+  static createMainModule(){
+    return new Module('');
+  }
+
+  #file;
+  #obj;
+  #key;
+
+  constructor(file, obj, key){
+    this.#file = file;
+    this.#obj = obj;
+    this.#key = key;
+  }
+
+  get exports(){ return this.#obj[this.#key]; }
+  set exports(val){ this.#obj[this.#key] = val; }
+
+  get filename(){ return this.#file; }
 }
+
+class CustomError extends Error{
+  get name(){ return this.constructor.name; }
+}
+
+class AssertionError extends CustomError{
+  constructor(){
+    super();
+    // new Function('debugger')();
+  }
+
+}
+
+class ExitError extends CustomError{}
+class CustomSyntaxError extends CustomError{}
 
 const O = {
   global: null,
@@ -2523,6 +2569,8 @@ const O = {
 
   log: null,
   displayBigIntsAsOrdinaryNumbers: 0,
+  debugRecursiveCalls: 0,
+  adaptedForNode: 0,
 
   // Node modules
 
@@ -2582,7 +2630,12 @@ const O = {
     Serializer,
     Serializable,
     Semaphore,
+    Process,
+    Module,
+    CustomError,
     AssertionError,
+    ExitError,
+    CustomSyntaxError,
   },
 
   init(loadProject=1){
@@ -2828,8 +2881,15 @@ const O = {
     return str;
   },
 
-  bion(val){
-    O.displayBigIntsAsOrdinaryNumbers = val;
+  bion(val){ O.displayBigIntsAsOrdinaryNumbers = val; },
+  dbgRec(val){ O.debugRecursiveCalls = val; },
+
+  adaptForNode(){
+    if(O.adaptedForNode) return;
+    const {global} = O;
+
+    global.process = new O.Process();
+    global.Buffer = O.Buffer;
   },
 
   title(title){
@@ -2991,6 +3051,22 @@ const O = {
     return input;
   },
 
+  ceTa(parent, classNames){
+    const ta = O.ce(parent, 'textarea', classNames);
+    ta.setAttribute('data-gramm_editor','false');
+    ta.setAttribute('spellcheck','false');
+    ta.setAttribute('autocapitalize','none');
+    ta.setAttribute('autocorrect','off');
+    return ta;
+  },
+
+  ceButton(parent, label, classNames, func=null){
+    const btn = O.ce(parent, 'button', classNames);
+    btn.innerText = label;
+    if(func !== null) O.ael(btn, 'click', func);
+    return btn;
+  },
+
   ceRadio(parent, name, value, label=null, classNames){
     var radio = O.ceInput(parent, 'radio', classNames);
     radio.name = name;
@@ -3099,8 +3175,13 @@ const O = {
       }
     };
 
-    if(file.startsWith('/'))
-      file = `${O.baseURL}${file}`;
+    if(file.startsWith('/')){
+      if(file.startsWith('//')){
+        file = file.slice(1);
+      }else{
+        file = `${O.baseURL}${file}`;
+      }
+    }
 
     xhr.open('GET', O.urlTime(file));
     xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
@@ -3181,16 +3262,13 @@ const O = {
     path = path.split('/');
     path.pop();
 
-    cache[pathOrig] = {};
-    const module = {
-      get exports(){ return cache[pathOrig]; },
-      set exports(val){ cache[pathOrig] = val; }
-    };
+    const mpf = O.modulesPolyfill;
+    const module = new O.Module(pathMatch, cache, pathOrig);
 
     const require = async newPath => {
       var resolvedPath;
 
-      if(/^(?:\/|https?\:\/\/|[^\.][\s\S]*\/)/.test(newPath)){
+      if(/^(?:\/|https?\:\/\/|[^\.@][\s\S]*\/)/.test(newPath)){
         resolvedPath = newPath;
       }else if(newPath.startsWith('.')){
         var oldPath = path.slice();
@@ -3204,9 +3282,10 @@ const O = {
         });
 
         resolvedPath = oldPath.join('/');
+      }else if(newPath.startsWith('@hakerh400/')){
+        O.adaptForNode();
+        resolvedPath = `//${newPath.slice(newPath.indexOf('/') + 1)}`;
       }else{
-        const mpf = O.modulesPolyfill;
-
         if(!O.has(mpf, newPath)){
           let msg = `Unknown native module ${O.sf(newPath)}`;
           if(pathResolved !== null) msg += `\nRequested from ${pathResolved}`;
@@ -3221,6 +3300,12 @@ const O = {
       return exportedModule;
     };
 
+    require.resolve = pth => {
+      return mpf.path.join(path.join('/'), pth);
+    };
+
+    require.main = Module.main;
+
     switch(type){
       case 0: // Text
         module.exports = data;
@@ -3233,7 +3318,16 @@ const O = {
       case 2: // JavaScript
         data = data.
           replace(/^const (?:O|debug) = require\(.+\s*/gm, '').
-          replace(/ = require\(/g, ' = await require(');
+          replace(/^const (\S+) = (require|O\.rfs)\(/gm, (a, b, c) => `const ${b} = await ${c}(`);
+
+        detectSuspiciousCalls: {
+          let reg = / const \S+ = (?:require|O\.rfs)\(/m;
+          if(!reg.test(data)) break detectSuspiciousCalls;
+
+          const lines = O.sanl(data);
+          const line = lines.findIndex(line => reg.test(line)) + 1;
+          log(`File ${pathMatch} contains a suspicious require call on line ${line}`);
+        }
 
         let func = null;
 
@@ -3462,7 +3556,7 @@ const O = {
         const i = str.search(/[\r\n]/);
         const s = i !== -1 ? str.slice(0, i) : str;
 
-        if(throwOnError) throw new SyntaxError(`Invalid syntax near ${O.sf(s)}`);
+        if(throwOnError) throw new O.CustomSyntaxError(`Invalid syntax near ${O.sf(s)}`);
 
         return O.last(funcs)(s, []);
       }
@@ -4077,7 +4171,27 @@ const O = {
   },
 
   rec(f, ...args){
-    const stack = [[f(...args), null]];
+    const dbg = O.debugRecursiveCalls;
+    let nameStack = dbg ? [] : null;
+
+    const makeStackFrame = (f, args) => {
+      const func = typeof f === 'function' ? f : f[0][f[1]];
+
+      if(dbg){
+        const name = func.name || '<unnamed>';
+        nameStack.push(name);
+        log('CALL', name, ...dbg === 2 ? args : []);
+        log.inc();
+      }
+
+      const gen = func === f ?
+        func.apply(null, args) :
+        func.apply(f[0], args)
+
+      return [gen, null];
+    };
+
+    const stack = [makeStackFrame(f, args)];
 
     while(1){
       const frame = O.last(stack);
@@ -4087,6 +4201,11 @@ const O = {
       const {done, value} = result;
 
       if(done){
+        if(dbg){
+          log('RET', nameStack.pop(), ...dbg === 2 ? [value] : []);
+          log.dec();
+        }
+
         if(stack.length === 1)
           return value;
 
@@ -4096,7 +4215,7 @@ const O = {
         continue;
       }
 
-      stack.push([value[0](...value.slice(1)), null]);
+      stack.push(makeStackFrame(value[0], value.slice(1)));
     }
   },
 
@@ -4185,6 +4304,10 @@ const O = {
     return func;
   },
 
+  raf2(func){
+    O.raf(() => O.raf(func));
+  },
+
   animFrame(){
     const cbs = O.animFrameCbs;
     const cbsCopy = cbs.slice();
@@ -4197,7 +4320,13 @@ const O = {
     Node functions
   */
 
-  rfs(file, str=0){ return O.nm.fs.readFileSync(file, str ? 'utf8' : null); },
+  rfs(file, str=0){
+    if(O.isBrowser)
+      return O.rfAsync(file, !str);
+
+    return O.nm.fs.readFileSync(file, str ? 'utf8' : null);
+  },
+
   wfs(file, data){ return O.nm.fs.writeFileSync(file, data); },
   ext(file){ return O.nm.path.parse(file).ext.slice(1); },
 
@@ -4207,6 +4336,7 @@ const O = {
 
   modulesPolyfill: (() => {
     const modules = {
+      fs: {},
       path: {
         normalize(p){
           return p.replace(/[\\]/g, '/');
@@ -4223,6 +4353,8 @@ const O = {
           });
         },
       },
+      assert: O.assert,
+      'child_process': {},
     };
 
     return modules;
@@ -4498,7 +4630,7 @@ const O = {
 
       if(m !== 0){
         str += char(val);
-        if(mode === 0) str += '='.repeat(3 - m);
+        /*if(mode === 0)*/ str += '='.repeat(3 - m);
       }
 
       return str;
@@ -4507,7 +4639,7 @@ const O = {
     const decode = (str, mode=0) => {
       let length = (str.length >> 2) * 3;
 
-      if(mode === 0){
+      /*if(mode === 0)*/{
         const pad = str.match(/\=*$/)[0].length;
         const extraBytes = pad !== 0 ? pad : 0;
         length -= extraBytes;
@@ -4582,8 +4714,12 @@ const O = {
   },
 
   exit(...args){
-    if(!(O.isNode || O.isElectron))
-      throw new TypeError('Only Node.js and Electron processes can be terminated');
+    if(!(O.isNode || O.isElectron)){
+      if(!this.adaptForNode)
+        throw new TypeError('Only Node.js and Electron processes can be terminated');
+
+      throw new O.ExitError(args.join(' '));
+    }
 
     if(args.length !== 0)
       log(...args);
