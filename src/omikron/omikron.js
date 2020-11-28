@@ -4321,10 +4321,10 @@ const O = {
   */
 
   rfs(file, str=0){
-    if(O.isBrowser)
-      return O.rfAsync(file, !str);
-
-    return O.nm.fs.readFileSync(file, str ? 'utf8' : null);
+    if(O.isNode)
+      return O.nm.fs.readFileSync(file, str ? 'utf8' : null);
+    
+    return O.rfAsync(file, !str);
   },
 
   wfs(file, data){ return O.nm.fs.writeFileSync(file, data); },
