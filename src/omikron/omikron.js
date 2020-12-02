@@ -2652,8 +2652,8 @@ const O = {
     O.env = env;
 
     const isBrowser = O.isBrowser = env === 'browser';
-    const isNode = O.isNode = env === 'node';
     const isElectron = O.isElectron = isBrowser && navigator.userAgent.includes('Electron');
+    const isNode = O.isNode = isElectron || env === 'node';
 
     if(isBrowser){
       if(CHROME_ONLY && global.navigator.vendor !== 'Google Inc.')
@@ -2781,7 +2781,7 @@ const O = {
 
     let logOrig;
 
-    if(O.isNode){
+    if(!O.isBrowser){
       const fs = require('fs');
       const fdOut = process.stdout.fd;
 
@@ -4170,7 +4170,15 @@ const O = {
     return res;
   },
 
+  kTco: Symbol('tco'),
+
+  tco(...args){
+    return [O.kTco, ...args];
+  },
+
   rec(f, ...args){
+    const {kTco} = O;
+
     const dbg = O.debugRecursiveCalls;
     let nameStack = dbg ? [] : null;
 
@@ -4213,6 +4221,16 @@ const O = {
         O.last(stack)[1] = value;
 
         continue;
+      }
+
+      if(value[0] === kTco){
+        if(dbg){
+          log('TCO', nameStack.pop());
+          log.dec();
+        }
+
+        stack.pop();
+        value.shift();
       }
 
       stack.push(makeStackFrame(value[0], value.slice(1)));
