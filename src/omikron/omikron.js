@@ -1447,6 +1447,8 @@ class EnhancedRenderingContext{
 
 class Buffer extends Uint8Array{
   constructor(...params){
+    assert(!O.isNode);
+
     if(params.length === 1 && typeof params[0] === 'string')
       params[0] = [...params[0]].map(a => O.cc(a));
 
@@ -1454,10 +1456,13 @@ class Buffer extends Uint8Array{
   }
 
   static alloc(size){
+    assert(!O.isNode);
     return new O.Buffer(size);
   }
 
   static from(data, encoding='utf8', mode=0){
+    assert(!O.isNode);
+
     if(data.length === 0)
       return O.Buffer.alloc(0);
 
@@ -1482,6 +1487,8 @@ class Buffer extends Uint8Array{
   }
 
   static concat(arr){
+    assert(!O.isNode);
+
     arr = arr.reduce((concatenated, buff) => {
       return [...concatenated, ...buff];
     }, []);
@@ -2203,7 +2210,7 @@ class IO{
     for(let i = 0, j = 0; i !== len; i++, j++){
       buf[i] ^= hash[j];
 
-      if(j === 32){
+      if(j === 31){
         hash = O.sha256(hash);
         j = -1;
       }
@@ -2278,6 +2285,38 @@ class IO{
   }
 }
 
+class IOBit{
+  constructor(input='', pad=1){
+    input = String(input);
+    O.assert(/^[01]*$/.test(input));
+
+    if(pad) input = input.replace(/./g, a => `1${a}`);
+
+    this.input = input;
+    this.output = '';
+  }
+
+  get hasMore(){
+    return this.input.length !== 0;
+  }
+
+  read(){
+    const bit = this.input[0] | 0;
+    this.input = this.input.slice(1);
+    return bit;
+  }
+
+  write(bit){
+    this.output += bit & 1;
+  }
+
+  getOutput(buf=1){
+    let out = this.output;
+    if(buf) out = O.Buffer.from(out);
+    return out;
+  }
+}
+
 class Serializer extends IO{
   static #abuf = new ArrayBuffer(8);
   static #view = new DataView(this.#abuf);
@@ -2286,78 +2325,86 @@ class Serializer extends IO{
     super(buf, checksum);
   }
 
-  write(num, max=1){
-    num |= 0;
-    max |= 0;
-    if(max === 0) return;
+  write(num, max=1n){
+    num = BigInt(num | 0);
+    max = BigInt(max | 0);
+    if(max === 0n) return;
 
-    let mask = 1 << 31 - clz32(max);
+    let mask = 1n;
+    while(mask <= max) mask <<= 1n;
+
     let limit = 1;
 
-    while(mask !== 0){
+    while(mask !== 0n){
       if(!limit || (max & mask)){
         let bit = num & mask ? 1 : 0;
         super.write(bit);
         if(!bit) limit = 0;
       }
-      mask >>= 1;
+
+      mask >>= 1n;
     }
 
     return this;
   }
 
-  read(max=1){
-    max |= 0;
-    if(max === 0) return 0;
+  read(max=1n){
+    max = BigInt(max | 0);
+    if(max === 0n) return;
 
-    let mask = 1 << 31 - clz32(max);
+    let mask = 1n;
+    while(mask <= max) mask <<= 1n;
+
     let limit = 1;
-    let num = 0;
+    let num = 0n;
 
-    while(mask !== 0){
-      num <<= 1;
+    while(mask !== 0n){
+      num <<= 1n;
+
       if(!limit || (max & mask)){
         let bit = super.read();
-        num |= bit;
-        if(!bit) limit = 0;
+        if(bit) num |= 1n;
+        else limit = 0;
       }
-      mask >>= 1;
+
+      mask >>= 1n;
     }
 
     return num;
   }
 
   writeInt(num, signed=1){
-    const snum = num;
-    num = -~abs(num);
+    num = BigInt(num | 0);
 
-    while(num !== 1){
+    const snum = num;
+    num = -~(num >= -num ? num : -num);
+
+    while(num !== 1n){
       super.write(1);
-      super.write(num & 1);
-      num >>= 1;
+      super.write(num & 1n ? 1 : 0);
+      num >>= 1n;
     }
 
     super.write(0);
 
-    if(signed && snum !== 0)
-      super.write(snum < 0);
+    if(signed && snum !== 0n)
+      super.write(snum < 0n);
 
     return this;
   }
 
   readInt(signed=1){
-    let num = 0;
-    let mask = 1;
-    let len = 0;
+    let num = 0n;
+    let mask = 1n;
 
     while(super.read()){
       if(super.read()) num |= mask;
-      mask <<= 1;
+      mask <<= 1n;
     }
 
     num = ~-(num | mask);
 
-    if(signed && num !== 0 && super.read())
+    if(signed && num !== 0n && super.read())
       num = -num;
 
     return num;
@@ -2397,7 +2444,7 @@ class Serializer extends IO{
   readDouble(){
     const view = this.constructor.#view;
     for(let i = 0; i !== 8; i++)
-      view.setUint8(i, this.read(255));
+      view.setUint8(i, Number(this.read(255)));
     return view.getFloat64(0, 1);
   }
 
@@ -2411,11 +2458,11 @@ class Serializer extends IO{
   }
 
   readBuf(){
-    const len = this.readUint();
+    const len = Number(this.readUint());
     const buf = O.Buffer.alloc(len);
 
     for(let i = 0; i !== len; i++)
-      buf[i] = this.read(255);
+      buf[i] = Number(this.read(255));
 
     return buf;
   }
@@ -2450,6 +2497,70 @@ class Serializable{
 
   static deser(ser){ return new this().deser(ser); }
   reser(){ return this.deser(new O.Serializer(this.ser().getOutput())); }
+}
+
+class NatSerializer{
+  #stack = [];
+  #input;
+
+  constructor(input=0n){
+    input = BigInt(input);
+    O.assert(input >= 0n);
+    this.#input = input;
+  }
+
+  get input(){ return this.#input; }
+  get stack(){ return this.#stack; }
+
+  get nz(){
+    const nz = this.#input !== 0n;
+    if(nz) this.#input--;
+    return nz;
+  }
+
+  read(mod=2n){
+    mod = BigInt(mod);
+
+    const n = this.#input % mod;
+    this.#input /= mod;
+
+    return n;
+  }
+
+  write(mod, num=null){
+    if(num === null){
+      num = mod;
+      mod = 2n;
+    }
+
+    this.#stack.push(BigInt(mod), BigInt(num));
+  }
+
+  inc(num=1n){
+    this.#stack.push(1n, BigInt(num));
+  }
+
+  get output(){
+    const stack = this.#stack;
+    let n = 0n;
+
+    while(stack.length !== 0){
+      const num = stack.pop();
+      const mod = stack.pop();
+
+      n = n * mod + num;
+    }
+
+    return n;
+  }
+}
+
+class NatSerializable{
+  ser(ser=new O.NatSerializer()){ O.virtual('ser'); }
+  deser(ser){ O.virtual('deser'); }
+
+  static deser(ser){ return new this().deser(ser); }
+  reser(){ return this.deser(new O.NatSerializer(this.ser().getOutput())); }
 }
 
 class Semaphore{
@@ -2627,8 +2738,11 @@ const O = {
     AsyncAVLNode,
     AsyncAVLTree,
     IO,
+    IOBit,
     Serializer,
     Serializable,
+    NatSerializer,
+    NatSerializable,
     Semaphore,
     Process,
     Module,
@@ -2951,9 +3065,8 @@ const O = {
     URL functions
   */
 
-  get href(){
-    return window.location.href;
-  },
+  get url(){ return location.href; },
+  get href(){ return O.url; },
 
   urlParam(param, defaultVal=null){
     var url = O.href;
