@@ -335,6 +335,73 @@ class Color extends Uint8ClampedArray{
     this.set(r, g, b);
   }
 
+  static from(info){
+    let R, G, B;
+
+    getRGB: {
+      if(typeof info === 'string'){
+        [R, G, B] = O.Color.parse(info);
+        break getRGB;
+      }
+
+      if(Array.isArray(info)){
+        [R, G, B] = info;
+        break getRGB;
+      }
+
+      throw new TypeError(`Invalid color info`);
+    }
+
+    return new O.Color(R, G, B);
+  }
+
+  static parse(origStr){
+    const str = origStr.trim();
+    let colStr;
+
+    if(str.startsWith('hsl')){
+      const match = str.match(/^hsl\s*\((\d+),\s*(\d+)\s*%\s*,\s*(\d+)\s*%\s*\)\s*$/);
+      O.assert(match !== null);
+
+      const H = match[1] / 360;
+      const S = match[2] / 100;
+      const L = match[3] / 100;
+      
+      return O.Color.hsl2rgb(H, S, L);
+    }
+
+    throw new TypeError(`Unsupported color format ${O.sf(origStr)}`);
+  }
+
+  static hsl2rgb(H, S, L){
+    let R, G, B;
+
+    parse: {
+      if(S === 0){
+        R = G = B = L;
+        break parse;
+      }
+
+      const Q = L < 1 / 2 ? L * (1 + S) : L + S - L * S;
+      const P = L * 2 - Q;
+
+      R = O.Color.hue2rgbComp(P, Q, H + 1 / 3);
+      G = O.Color.hue2rgbComp(P, Q, H);
+      B = O.Color.hue2rgbComp(P, Q, H - 1 / 3);
+    }
+
+    return [round(R * 255), round(G * 255), round(B * 255)];
+  }
+
+  static hue2rgbComp(P, Q, T){
+    if(T < 0) T += 1;
+    if(T > 1) T -= 1;
+    if(T < 1 / 6) return P + (Q - P) * 6 * T;
+    if(T < 1 / 2) return Q;
+    if(T < 2 / 3) return P + (Q - P) * (2 / 3 - T) * 6;
+    return P;
+  }
+
   static getCtx(){
     const ctx = this.#g;
     if(ctx !== null) return ctx;
@@ -384,10 +451,10 @@ class Color extends Uint8ClampedArray{
     return rgb;
   }
 
-  static rgb2col(rgb){
-    return `#${rgb[0].toString(16).padStart(2, '0')
-      }${rgb[1].toString(16).padStart(2, '0')
-      }${rgb[2].toString(16).padStart(2, '0')}`;
+  static rgb2str(R, G, B){
+    return `#${R.toString(16).padStart(2, '0')
+      }${G.toString(16).padStart(2, '0')
+      }${B.toString(16).padStart(2, '0')}`;
   }
 
   static colNorm(col){
@@ -395,10 +462,6 @@ class Color extends Uint8ClampedArray{
     if(!this.isColValid(col)) return null;
     const g = this.getCtx();
     return g.fillStyle;
-  }
-
-  static from(rgb){
-    return new O.Color(rgb[0], rgb[1], rgb[2]);
   }
 
   static hsv(k){
@@ -1447,7 +1510,7 @@ class EnhancedRenderingContext{
 
 class Buffer extends Uint8Array{
   constructor(...params){
-    assert(!O.isNode);
+    O.assert(!O.isNode);
 
     if(params.length === 1 && typeof params[0] === 'string')
       params[0] = [...params[0]].map(a => O.cc(a));
@@ -1455,13 +1518,17 @@ class Buffer extends Uint8Array{
     super(...params);
   }
 
+  static isBuffer(obj){
+    return obj instanceof O.Buffer;
+  }
+
   static alloc(size){
-    assert(!O.isNode);
+    O.assert(!O.isNode);
     return new O.Buffer(size);
   }
 
   static from(data, encoding='utf8', mode=0){
-    assert(!O.isNode);
+    O.assert(!O.isNode);
 
     if(data.length === 0)
       return O.Buffer.alloc(0);
@@ -1487,7 +1554,7 @@ class Buffer extends Uint8Array{
   }
 
   static concat(arr){
-    assert(!O.isNode);
+    O.assert(!O.isNode);
 
     arr = arr.reduce((concatenated, buff) => {
       return [...concatenated, ...buff];
