@@ -355,13 +355,12 @@ class Color extends Uint8ClampedArray{
     return new O.Color(R, G, B);
   }
 
-  static parse(origStr){
-    const str = origStr.trim();
+  static parse(str){
     let colStr;
 
-    if(str.startsWith('hsl')){
+    tryHSL: {
       const match = str.match(/^hsl\s*\((\d+),\s*(\d+)\s*%\s*,\s*(\d+)\s*%\s*\)\s*$/);
-      O.assert(match !== null);
+      if(match === null) break tryHSL;
 
       const H = match[1] / 360;
       const S = match[2] / 100;
@@ -370,7 +369,11 @@ class Color extends Uint8ClampedArray{
       return O.Color.hsl2rgb(H, S, L);
     }
 
-    throw new TypeError(`Unsupported color format ${O.sf(origStr)}`);
+    throw new TypeError(`Unsupported color format ${O.sf(str)}`);
+  }
+
+  static norm(info){
+    return O.Color.from(info).toString();
   }
 
   static hsl2rgb(H, S, L){
@@ -4327,7 +4330,13 @@ const O = {
   keys(obj){ return Reflect.ownKeys(obj); },
   cc(char, index=0){ return char.charCodeAt(index); },
   sfcc(cc){ return String.fromCharCode(cc); },
-  hex(val, bytesNum){ return val.toString(16).toUpperCase().padStart(bytesNum << 1, '0'); },
+
+  hex(val, bytesNum, upper=1){
+    let s = val.toString(16);
+    if(upper) s = s.toUpperCase();
+    return s.padStart(bytesNum << 1, '0');
+  },
+
   hypot(x, y){ return sqrt(x * x + y * y); },
   hypots(x, y){ return x * x + y * y; },
   hypotm(x, y){ return abs(x) + abs(y); },
@@ -4362,8 +4371,49 @@ const O = {
     const dbg = O.debugRecursiveCalls;
     let nameStack = dbg ? [] : null;
 
+    const err = msg => {
+      throw new TypeError(`[O.rec] ${msg}`);
+    };
+
+    const getObjInfo = obj => {
+      let info = null;
+
+      getInfo: {
+        try{
+          const cname = obj.constructor.name;
+          if(typeof cname !== 'string') break getInfo;
+          if(cname.length === 0) break getInfo;
+
+          info = O.sf(cname);
+        }catch{}
+      }
+
+      if(info === null) return 'given';
+      return info;
+    };
+
     const makeStackFrame = (f, args) => {
-      const func = typeof f === 'function' ? f : f[0][f[1]];
+      let func;
+
+      if(typeof f === 'function'){
+        func = f;
+      }else{
+        const obj = f[0];
+
+        if(!obj)
+          err(`Cannot read method name from a non-object value`);
+
+        const methodName = f[1];
+        func = obj[methodName];
+
+        if(!func)
+          err(`The ${getObjInfo(obj)} object has no method ${O.sf(methodName)}`);
+
+        if(typeof func !== 'function')
+          err(`The property ${
+            O.sf(methodName)} of the ${getObjInfo(obj)} object is not a function (its type if ${
+            typeof func})`);
+      }
 
       if(dbg){
         const name = func.name || '<unnamed>';
@@ -4411,6 +4461,21 @@ const O = {
 
         stack.pop();
         value.shift();
+      }
+
+      if(!Array.isArray(value)){
+        const e = (msg='') => {
+          err(`The received value is not an array${msg ? '. ' : ''}${msg}`);
+        };
+
+        const GeneratorFunction = (function*(){}).constructor;
+        log(value.constructor)
+        log(GeneratorFunction)
+
+        if(value instanceof GeneratorFunction)
+          e(`You probably need to change "yield obj.method(arg)" to "yield [[obj, 'method'], arg]"`);
+
+        e();
       }
 
       stack.push(makeStackFrame(value[0], value.slice(1)));
