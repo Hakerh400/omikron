@@ -338,15 +338,15 @@ class Color extends Uint8ClampedArray{
   static from(info){
     let R, G, B;
 
-    getRGB: {
+    getRgb: {
       if(typeof info === 'string'){
         [R, G, B] = O.Color.parse(info);
-        break getRGB;
+        break getRgb;
       }
 
       if(Array.isArray(info)){
         [R, G, B] = info;
-        break getRGB;
+        break getRgb;
       }
 
       throw new TypeError(`Invalid color info`);
@@ -358,9 +358,9 @@ class Color extends Uint8ClampedArray{
   static parse(str){
     let colStr;
 
-    tryHSL: {
+    tryHsl: {
       const match = str.match(/^hsl\s*\((\d+),\s*(\d+)\s*%\s*,\s*(\d+)\s*%\s*\)\s*$/);
-      if(match === null) break tryHSL;
+      if(match === null) break tryHsl;
 
       const H = match[1] / 360;
       const S = match[2] / 100;
@@ -3909,6 +3909,10 @@ const O = {
     return O.random() * a;
   },
 
+  randp(a){
+    return O.randf() < a;
+  },
+
   randInt(start=0, prob=.5){
     let num = start;
     while(O.randf() < prob) num++;
@@ -4077,7 +4081,7 @@ const O = {
     g.closePath();
   },
 
-  // Other functions
+  // Assertions
 
   assert(...args){
     const len = args.length;
@@ -4101,6 +4105,16 @@ const O = {
     let msg = `Assertion failed`;
     if(len === 1) msg += ` ---> ${args[0]}`;
     throw new O.AssertionError(msg);
+  },
+
+  // Other functions
+
+  const(val){
+    return () => val;
+  },
+
+  constArr(){
+    return () => [];
   },
 
   repeat(num, func){
@@ -4398,6 +4412,16 @@ const O = {
       if(typeof f === 'function'){
         func = f;
       }else{
+        const errBadArg = msg => {
+          err(`Expected either a function, or a bound method info in the form of an array as the fist argument. ${msg}`);
+        };
+
+        if(!Array.isArray(f))
+          errBadArg(`The received argument is neither a function, nor an array`);
+
+        if(f.length !== 2)
+          errBadArg(`The received argument is an array whose length is ${f.length}, but it must be 2`);
+
         const obj = f[0];
 
         if(!obj)
@@ -4406,12 +4430,16 @@ const O = {
         const methodName = f[1];
         func = obj[methodName];
 
-        if(!func)
+        if(!func){
+          if(Array.isArray(obj))
+            err(`Received an array as the target object (you probably added extra brackets)`);
+
           err(`The ${getObjInfo(obj)} object has no method ${O.sf(methodName)}`);
+        }
 
         if(typeof func !== 'function')
           err(`The property ${
-            O.sf(methodName)} of the ${getObjInfo(obj)} object is not a function (its type if ${
+            O.sf(methodName)} of the ${getObjInfo(obj)} object is not a function (its type is ${
             typeof func})`);
       }
 
