@@ -4558,7 +4558,7 @@ const O = {
       const result = gen.next(val);
       const {done, value} = result;
 
-      if(value[0] === kTco){
+      if(Array.isArray(value) && value[0] === kTco){
         if(dbg){
           log('TCO', nameStack.pop());
           log.dec();
