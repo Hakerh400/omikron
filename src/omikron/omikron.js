@@ -6,6 +6,9 @@ const {
   atan, atan2, clz32,
 } = Math;
 
+const RMI_HOST = 'localhost';
+const RMI_PORT = 8081;
+
 const TypedArray = Object.
   getPrototypeOf(Uint8Array.prototype).
   constructor;
@@ -1599,8 +1602,13 @@ class EnhancedRenderingContext{
 }
 
 class Buffer extends Uint8Array{
-  constructor(...params){
+  static #ctorSym = Symbol();
+
+  constructor(ctorSym, ...params){
     O.assert(!O.isNode);
+
+    if(ctorSym !== Buffer.#ctorSym)
+      throw new TypeError(`The \`Buffer\` constructor is deprecated. Use \`Buffer.from\` instead`);
 
     if(params.length === 1 && typeof params[0] === 'string')
       params[0] = [...params[0]].map(a => O.cc(a));
@@ -1614,27 +1622,43 @@ class Buffer extends Uint8Array{
 
   static alloc(size){
     O.assert(!O.isNode);
-    return new O.Buffer(size);
+    return new O.Buffer(Buffer.#ctorSym, size);
   }
 
-  static from(data, encoding='utf8', mode=0){
+  static from(data, encoding=null, mode=0){
     O.assert(!O.isNode);
 
     if(data.length === 0)
       return O.Buffer.alloc(0);
 
+    if(data instanceof ArrayBuffer)
+      data = new Uint8Array(data);
+
+    if(O.isArr(data)){
+      O.assert(encoding === null);
+      return new O.Buffer(Buffer.#ctorSym, data);
+    }
+
+    if(encoding === null)
+      encoding = 'utf8';
+
     switch(encoding){
       case 'hex':
         data = data.match(/[0-9a-f]{2}/gi).map(a => parseInt(a, 16));
-        return new O.Buffer(data);
+        return new O.Buffer(Buffer.#ctorSym, data);
         break;
 
       case 'base64':
         return O.base64.decode(data, mode);
         break;
 
-      case 'utf8':
-        return new O.Buffer(data);
+      case 'utf8': case 'utf-8':
+        O.assert(typeof data === 'string');
+        return new O.Buffer(Buffer.#ctorSym, new TextEncoder().encode(data));
+        break;
+
+      case 'binary':
+        return new O.Buffer(Buffer.#ctorSym, data);
         break;
 
       default:
@@ -1650,7 +1674,15 @@ class Buffer extends Uint8Array{
       return [...concatenated, ...buff];
     }, []);
 
-    return new O.Buffer(arr);
+    return new O.Buffer(Buffer.#ctorSym, arr);
+  }
+
+  static errEnc(encoding){
+    throw new TypeError(`Unsupported encoding ${O.sf(encoding)}`);
+  }
+
+  slice(...args){
+    return Buffer.from(new Uint8Array(this).slice(...args));
   }
 
   equals(buf){
@@ -1698,9 +1730,9 @@ class Buffer extends Uint8Array{
         return O.base64.encode(this, mode);
         break;
 
-      case 'utf8':
-        return Array.from(this).map(a => String.fromCharCode(a)).join('');
-        break;
+      case 'utf8': case 'utf-8': 
+        return new TextDecoder().decode(this);
+      break;
 
       case 'binary':
         return Array.from(this).map(a => String.fromCharCode(a)).join('');
@@ -1710,10 +1742,6 @@ class Buffer extends Uint8Array{
         this.errEnc(encoding);
         break;
     }
-  }
-
-  errEnc(encoding){
-    throw new TypeError(`Unsupported encoding ${O.sf(encoding)}`);
   }
 }
 
@@ -2798,11 +2826,11 @@ class AssertionError extends CustomError{
     super();
     // new Function('debugger')();
   }
-
 }
 
 class ExitError extends CustomError{}
 class CustomSyntaxError extends CustomError{}
+class RMIError extends CustomError{}
 
 const O = {
   global: null,
@@ -2909,6 +2937,7 @@ const O = {
     AssertionError,
     ExitError,
     CustomSyntaxError,
+    RMIError,
   },
 
   init(loadProject=1){
@@ -3576,7 +3605,7 @@ const O = {
       return mpf.path.join(path.join('/'), pth);
     };
 
-    require.main = Module.main;
+    require.main = O.Module.main;
 
     switch(type){
       case 0: // Text
@@ -3664,6 +3693,63 @@ const O = {
 
       cb(module.exports);
     });
+  },
+
+  rmiSem: new Semaphore(),
+
+  async rmi(...args){
+    await O.rmiSem.wait();
+
+    return new Promise((resolve, reject) => {
+      try{
+        let host = RMI_HOST;
+        let port = RMI_PORT;
+
+        if(typeof args[0] === 'object'){
+          const opts = args.shift();
+
+          if(O.has(opts, 'host')) host = opts.host;
+          if(O.has(opts, 'port')) port = opts.port;
+        }
+
+        const method = args.shift();
+        O.assert(typeof method === 'string');
+        O.assert(/^(?:\.[a-zA-Z0-9]+)+$/.test(`.${method}`));
+
+        const req = JSON.stringify([method.split('.'), args]);
+        const xhr = new window.XMLHttpRequest();
+
+        xhr.onreadystatechange = () => {
+          try{
+            if(xhr.readyState !== 4) return;
+
+            const {status} = xhr;
+
+            if(status !== 200){
+              if(status === 0)
+                throw new TypeError(`RMI server is unavailable`);
+
+              throw new TypeError(`RMI server responded with status code ${status}`);
+            }
+
+            const res = JSON.parse(xhr.responseText);
+
+            if(res[0])
+              throw new O.RMIError(res[1]);
+
+            resolve(res[1]);
+          }catch(err){
+            reject(err);
+          }
+        };
+
+        xhr.open('POST', `http://${host}:${port}/`);
+        xhr.setRequestHeader('x-requested-with', 'XMLHttpRequest');
+        xhr.send(req);
+      }catch(err){
+        reject(err);
+      }
+    }).finally(() => O.rmiSem.signal());
   },
 
   /*
@@ -4201,6 +4287,31 @@ const O = {
 
   // Other functions
 
+  get symbols(){
+    return new Proxy(O.obj(), {
+      get(t, key){
+        return Symbol(key);
+      },
+    });
+  },
+
+  intPair(a, b){
+    const c = a + b;
+    return (c * (c + 1) >> 1) + b;
+  },
+
+  intUnpair(a){
+    const w = floor((sqrt(a * 8 + 1) - 1) / 2);
+    const t = w * (w + 1) >> 1;
+    const y = a - t;
+    const x = w - y;
+
+    return [x, y];
+  },
+
+  intFst(a){ return O.intUnpair(a)[0]; },
+  intSnd(a){ return O.intUnpair(a)[1]; },
+
   const(val){
     return () => val;
   },
@@ -4434,6 +4545,7 @@ const O = {
   undupe(arr){ return arr.filter((a, b, c) => c.indexOf(a) === b); },
   obj(proto=null){ return Object.create(proto); },
   keys(obj){ return Reflect.ownKeys(obj); },
+  vals(obj){ return O.keys(obj).map(a => obj[a]); },
   cc(char, index=0){ return char.charCodeAt(index); },
   sfcc(cc){ return String.fromCharCode(cc); },
 
@@ -4679,14 +4791,30 @@ const O = {
     return Date.now();
   },
 
+  get date(){
+    return new Date().toGMTString();
+  },
+
   raf(func){
     if(O.isElectron) O.animFrameCbs.push(func);
     else window.requestAnimationFrame(func);
     return func;
   },
 
+  rafa(func){
+    return new Promise((res, rej) => O.raf(() => {
+      (async () => await func())().then(res, rej);
+    }));
+  },
+
   raf2(func){
     O.raf(() => O.raf(func));
+  },
+
+  raf2a(func){
+    return new Promise((res, rej) => O.raf2(() => {
+      (async () => await func())().then(res, rej);
+    }));
   },
 
   animFrame(){
@@ -4736,6 +4864,7 @@ const O = {
       },
       assert: O.assert,
       'child_process': {},
+      'perf_hooks': {},
     };
 
     return modules;
@@ -4765,7 +4894,7 @@ const O = {
     return target.removeEventListener(type, func);
   },
 
-  pd(evt, stopPropagation=0){
+  pd(evt, stopPropagation=1){
     evt.preventDefault();
     if(stopPropagation) evt.stopPropagation();
   },
@@ -4814,7 +4943,7 @@ const O = {
 
     function slowSha256(buff){
       if(!(buff instanceof O.Buffer))
-        buff = new O.Buffer(buff);
+        buff = O.Buffer.from(buff);
 
       if(hhBase === null){
         hhBase = getArrH();
