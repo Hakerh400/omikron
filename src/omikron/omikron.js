@@ -2824,10 +2824,12 @@ class Module{
   #obj;
   #key;
 
-  constructor(file, obj, key){
+  constructor(file, obj={}, key=''){
     this.#file = file;
     this.#obj = obj;
     this.#key = key;
+
+    obj[key] = {};
   }
 
   get exports(){ return this.#obj[this.#key]; }
@@ -3542,7 +3544,8 @@ const O = {
     let data = null;
     let pathResolved = null;
 
-    if(path in cache) return cache[path];
+    if(pathOrig in cache)
+      return cache[pathOrig];
 
     const load = (path, ...args) => {
       pathResolved = path;
