@@ -1625,7 +1625,7 @@ class Buffer extends Uint8Array{
     return new O.Buffer(Buffer.#ctorSym, size);
   }
 
-  static from(data, encoding=null, mode=0){
+  static from(data, encoding=null){
     O.assert(!O.isNode);
 
     if(data.length === 0)
@@ -1649,7 +1649,7 @@ class Buffer extends Uint8Array{
         break;
 
       case 'base64':
-        return O.base64.decode(data, mode);
+        return O.base64.decode(data);
         break;
 
       case 'utf8': case 'utf-8':
@@ -1720,14 +1720,14 @@ class Buffer extends Uint8Array{
     this[offset + 3] = val;
   }
 
-  toString(encoding='utf8', mode=0){
+  toString(encoding='utf8'){
     switch(encoding){
       case 'hex':
         return Array.from(this).map(a => a.toString(16).padStart(2, '0')).join('');
         break;
 
       case 'base64':
-        return O.base64.encode(this, mode);
+        return O.base64.encode(this);
         break;
 
       case 'utf8': case 'utf-8': 
@@ -2688,6 +2688,25 @@ class NatSerializer{
   #stack = [];
   #input;
 
+  static convertBase(arr, from, to, bigint=1){
+    const ser1 = new NatSerializer();
+
+    for(const n of arr){
+      ser1.inc();
+      ser1.write(from, n);
+    }
+
+    const ser2 = new NatSerializer(ser1.output);
+    const arr2 = [];
+
+    while(ser2.nz){
+      const n = ser2.read(to);
+      arr2.push(bigint ? n : Number(n));
+    }
+
+    return arr2;
+  }
+
   constructor(input=0n){
     input = BigInt(input);
     O.assert(input >= 0n);
@@ -3020,6 +3039,9 @@ const O = {
         O[nameNew] = ctorNew;
       }
     }
+
+    O.base64 = O.base64();
+    O.base62 = O.base62();
 
     if(loadProject){
       const mainProject = 'main';
@@ -4295,6 +4317,15 @@ const O = {
     });
   },
 
+  kvPairs(obj){
+    return function*(){
+      const keys = O.keys(obj);
+
+      for(const key of keys)
+        yield [key, obj[key]];
+    }();
+  },
+
   intPair(a, b){
     const c = a + b;
     return (c * (c + 1) >> 1) + b;
@@ -4623,8 +4654,10 @@ const O = {
         if(!Array.isArray(f))
           errBadArg(`The received argument is neither a function, nor an array`);
 
-        if(f.length !== 2)
-          errBadArg(`The received argument is an array whose length is ${f.length}, but it must be 2`);
+        const fLen = f.length;
+
+        if(fLen !== 2 && fLen !== 3)
+          errBadArg(`The received argument is an array whose length is ${fLen}, but it must be 2 or 3`);
 
         const obj = f[0];
 
@@ -4632,7 +4665,10 @@ const O = {
           err(`Cannot read method name from a non-object value`);
 
         const methodName = f[1];
-        func = obj[methodName];
+        const isSuper = fLen === 3 ? f[2] : 0;
+        const methodContainer = isSuper ? O.proto(O.proto(obj)) : obj;
+
+        func = methodContainer[methodName];
 
         if(!func){
           if(Array.isArray(obj))
@@ -4699,8 +4735,9 @@ const O = {
         };
 
         const GeneratorFunction = (function*(){}).constructor;
-        log(value.constructor)
-        log(GeneratorFunction)
+
+        // log(value.constructor);
+        // log(GeneratorFunction);
 
         if(value instanceof GeneratorFunction)
           e(`You probably need to change "yield obj.method(arg)" to "yield [[obj, 'method'], arg]"`);
@@ -5110,7 +5147,7 @@ const O = {
     }
   })(),
 
-  base64: (() => {
+  base64(){
     const encode = (data, mode=0) => {
       const buf = O.Buffer.from(data);
 
@@ -5215,7 +5252,34 @@ const O = {
     };
 
     return {encode, decode};
-  })(),
+  },
+
+  base62(){
+    const digits = O.chars('0', '9');
+    const lower = O.chars('a', 'z');
+    const upper = O.chars('A', 'Z');
+    const chars = digits + lower + upper;
+
+    const chmap = O.obj();
+    [...chars].forEach((a, i) => chmap[a] = i);
+
+    const encode = data => {
+      const buf = O.Buffer.from(data);
+      const arr = O.NatSerializer.convertBase(buf, 256, 62, 0);
+      return arr.map(a => chars[a]).join('');
+    };
+
+    const decode = str => {
+      const arr1 = Array.from(str, a => chmap[a]);
+      const arr2 = O.NatSerializer.convertBase(arr1, 62, 256, 0);
+      return O.Buffer.from(arr2);
+    };
+
+    return {
+      encode,
+      decode,
+    };
+  },
 
   // Exceptions
 
