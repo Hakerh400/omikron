@@ -2975,7 +2975,7 @@ const O = {
     O.env = env;
 
     const isBrowser = O.isBrowser = env === 'browser';
-    const isElectron = O.isElectron = isBrowser && navigator.userAgent.includes('Electron');
+    const isElectron = 0//O.isElectron = isBrowser && navigator.userAgent.includes('Electron');
     const isNode = O.isNode = isElectron || env === 'node';
 
     if(isBrowser){

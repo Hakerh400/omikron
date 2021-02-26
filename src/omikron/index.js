@@ -27,7 +27,7 @@ class Document{
 module.exports = getFramework();
 
 function getFramework(){
-  var str = fs.readFileSync(omikronScript).toString();
+  var str = fs.readFileSync(omikronScript).toString().trim();
   str = str.split(/\r\n|\r|\n/);
   str[str.length - 1] = 'return O;';
   str = str.join('\n');
