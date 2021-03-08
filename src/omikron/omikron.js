@@ -4892,7 +4892,10 @@ const O = {
         },
 
         join(...pths){
-          return pths.reduce((p1, p2) => {
+          let pth = pths.reduce((p1, p2) => {
+            if(p1.endsWith('/'))
+              p1 = p1.slice(0, p1.length - 1);
+
             p1 = p1.slice(p1.match(/[\/\\]*$/)[0].length);
             p2 = p2.slice(0, p2.length - p2.match(/^[\/\\]*/)[0].length);
 
@@ -4900,6 +4903,26 @@ const O = {
               concat(p2.split(/[\/\\]/)).
               join('/');
           });
+
+          const regs = [
+            [/\/\.\//, '/'],
+            [/\/[^\/]+\/\.\.\//, '/'],
+            [/\/\.$/, ''],
+            [/\/[^\/]+\/\.\.$/, ''],
+          ];
+
+          for(const [reg, str] of regs){
+            while(1){
+              const pthNew = pth.replace(reg, str);
+
+              if(pthNew === pth)
+                break;
+
+              pth = pthNew;
+            }
+          }
+
+          return pth;
         },
       },
       assert: O.assert,
