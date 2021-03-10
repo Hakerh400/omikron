@@ -3908,6 +3908,7 @@ const O = {
 
       const rstr = String(val);
       const reg = new RegExp(`^(?:${rstr.slice(1, rstr.length - 1)})`);
+      
       regs.push(reg);
     });
 
