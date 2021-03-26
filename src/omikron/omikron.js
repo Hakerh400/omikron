@@ -3794,11 +3794,13 @@ const O = {
     }).join('');
   },
 
-  sanl(str){
+  sanl(str, includeEmpty=1){
+    if(str.length === 0 && !includeEmpty) return [];
     return String(str).split(/\r\n|\r|\n/g);
   },
 
-  sanll(str){
+  sanll(str, includeEmpty=1){
+    if(str.length === 0 && !includeEmpty) return [];
     return String(str).split(/\r\n\r\n|\r\r|\n\n/g);
   },
 
