@@ -2843,8 +2843,8 @@ class CustomError extends Error{
 }
 
 class AssertionError extends CustomError{
-  constructor(){
-    super();
+  constructor(msg){
+    super(msg);
     // new Function('debugger')();
   }
 }
@@ -4296,8 +4296,7 @@ const O = {
       throw new TypeError(`Expected 1 or 2 arguments, but got ${len}`);
 
     if(!args[0]){
-      let msg = `Assertion failed`;
-      if(len === 2) msg += ` ---> ${args[1]}`;
+      const msg = len === 2 ? String(args[1]) : '';
       throw new O.AssertionError(msg);
     }
   },
@@ -4308,8 +4307,7 @@ const O = {
     if(len > 1)
       throw new TypeError(`Expected 0 or 1 argument, but got ${len}`);
 
-    let msg = `Assertion failed`;
-    if(len === 1) msg += ` ---> ${args[0]}`;
+    const msg = len === 1 ? String(args[0]) : '';
     throw new O.AssertionError(msg);
   },
 
