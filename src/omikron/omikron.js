@@ -4630,9 +4630,16 @@ const O = {
 
     const getObjInfo = obj => {
       let info = null;
+      let isStatic = 0;
 
       getInfo: {
         try{
+          if(obj.constructor === Function){
+            info = O.sf(obj.name);
+            isStatic = 1;
+            break getInfo;
+          }
+
           const cname = obj.constructor.name;
           if(typeof cname !== 'string') break getInfo;
           if(cname.length === 0) break getInfo;
@@ -4641,8 +4648,12 @@ const O = {
         }catch{}
       }
 
-      if(info === null) return 'given';
-      return info;
+      if(info === null) return ['given',getStaticStr(0)];
+      return [info, getStaticStr(isStatic)];
+    };
+
+    const getStaticStr = isStatic => {
+      return isStatic ? 'static ' : '';
     };
 
     const makeStackFrame = (f, args) => {
@@ -4678,13 +4689,18 @@ const O = {
           if(Array.isArray(obj))
             err(`Received an array as the target object (you probably added extra brackets)`);
 
-          err(`The ${getObjInfo(obj)} object has no method ${O.sf(methodName)}`);
+          const [objName, staticStr] = getObjInfo(obj);
+
+          err(`The ${objName} object has no ${staticStr}method ${O.sf(methodName)}`);
         }
 
-        if(typeof func !== 'function')
-          err(`The property ${
+        if(typeof func !== 'function'){
+          const [objName, staticStr] = getObjInfo(obj);
+
+          err(`The ${staticStr}property ${
             O.sf(methodName)} of the ${getObjInfo(obj)} object is not a function (its type is ${
             typeof func})`);
+        }
       }
 
       if(dbg){
