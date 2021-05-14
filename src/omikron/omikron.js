@@ -9,6 +9,9 @@ const {
 const RMI_HOST = 'localhost';
 const RMI_PORT = 8081;
 
+const emptyArr = [];
+const emptySet = new Set();
+
 const TypedArray = Object.
   getPrototypeOf(Uint8Array.prototype).
   constructor;
@@ -152,6 +155,14 @@ class AsyncMap2D{
     return 1;
   }
 
+  hasRow(y){
+    return O.has(this.d, y);
+  }
+
+  getRow(y){
+    return this.d[y];
+  }
+
   async iter(func){
     const {d} = this;
 
@@ -275,6 +286,117 @@ class Map3D{
     });
 
     return arr;
+  }
+}
+
+class SetMap{
+  #map = new Map();
+
+  constructor(iterable=null, strict=0){
+    this.strict = strict;
+
+    if(iterable !== null)
+      for(const [key, val] of iterable)
+        this.add(key, val);
+  }
+
+  get size(){
+    return this.#map.size;
+  }
+
+  get empty(){
+    return this.size === 0;
+  }
+
+  get nempty(){
+    return this.size !== 0;
+  }
+
+  get keys(){
+    return this.#map.keys();
+  }
+
+  get vals(){
+    const map = this.#map;
+
+    return function*(){
+      const seen = new Set();
+
+      for(const set of map.values()){
+        for(const val of set){
+          if(seen.has(val)) continue;
+
+          yield val;
+          seen.add(val);
+        }
+      }
+    }();
+  }
+
+  hasKey(key){
+    return this.#map.has(key);
+  }
+
+  has(key, val){
+    const map = this.#map;
+
+    if(!map.has(key)) return 0;
+    return map.get(key).has(val);
+  }
+
+  get(key){
+    const map = this.#map;
+
+    if(map.has(key)){
+      const set = map.get(key);
+      O.assert(set.size !== 0);
+      return set;
+    }
+
+    return emptySet;
+  }
+
+  add(key, val){
+    const map = this.#map;
+
+    if(!map.has(key))
+      map.set(key, new Set());
+
+    const set = map.get(key);
+
+    if(this.strict)
+      O.assert(!set.has(val));
+
+    set.add(val);
+  }
+
+  remove(key, val){
+    const map = this.#map;
+
+    if(this.strict)
+      O.assert(map.has(key));
+
+    if(!map.has(key))
+      return;
+
+    const set = map.get(key);
+    O.assert(set.size !== 0);
+
+    if(this.strict)
+      O.assert(set.has(val));
+
+    set.delete(val);
+
+    if(set.size === 0)
+      map.delete(key);
+  }
+
+  clear(){
+    this.#map.clear();
+  }
+
+  [Symbol.iterator](){
+    return this.#map[Symbol.iterator]();
   }
 }
 
@@ -2714,6 +2836,8 @@ class NatSerializer{
   }
 
   get input(){ return this.#input; }
+  set input(val){ this.#input = val; }
+
   get stack(){ return this.#stack; }
 
   get nz(){
@@ -2929,12 +3053,13 @@ const O = {
     Set2D,
     AsyncMap2D,
     Map3D,
+    SetMap,
+    MultidimensionalMap,
     Collection,
     Color,
     AsyncImageData,
     EventEmitter,
     AsyncGrid,
-    MultidimensionalMap,
     EnhancedRenderingContext,
     Buffer,
     AsyncIterable,
@@ -4312,6 +4437,16 @@ const O = {
   },
 
   // Other functions
+
+  *mapr(arr, func){
+    const len = arr.length;
+    const arrNew = [];
+
+    for(let i = 0; i !== len; i++)
+      arrNew.push(yield [func, arr[i], i, arr]);
+
+    return arrNew;
+  },
 
   get symbols(){
     return new Proxy(O.obj(), {
