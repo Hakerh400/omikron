@@ -300,6 +300,10 @@ class SetMap{
         this.add(key, val);
   }
 
+  get map(){
+    return this.#map;
+  }
+
   get size(){
     return this.#map.size;
   }
