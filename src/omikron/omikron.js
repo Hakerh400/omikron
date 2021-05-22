@@ -1214,6 +1214,8 @@ class AsyncGrid{
 }
 
 class EnhancedRenderingContext{
+  ctxInfo = [];
+
   constructor(g){
     this.g = g;
     this.canvas = g.canvas;
@@ -1424,30 +1426,39 @@ class EnhancedRenderingContext{
   }
 
   save(rot=0){
-    this.sPrev = this.s;
-    this.txPrev = this.tx;
-    this.tyPrev = this.ty;
-
-    if(rot){
-      this.rtxPrev = this.rtx;
-      this.rtyPrev = this.rty;
-      this.rotPrev = this.rot;
-      this.rcosPrev = this.rcos;
-      this.rsinPrev = this.rsin;
-    }
+    this.ctxInfo.push([
+      this.s,
+      this.tx,
+      this.ty,
+      rot ? [
+        this.rtx,
+        this.rty,
+        this.rot,
+        this.rcos,
+        this.rsin,
+      ] : null,
+    ]);
   }
 
-  restore(rot=0){
-    this.s = this.sPrev;
-    this.tx = this.txPrev;
-    this.ty = this.tyPrev;
+  restore(){
+    const info = this.ctxInfo.pop();
 
-    if(rot){
-      this.rtx = this.rtxPrev;
-      this.rty = this.rtyPrev;
-      this.rot = this.rotPrev;
-      this.rcos = this.rcosPrev;
-      this.rsin = this.rsinPrev;
+    [
+      this.s,
+      this.tx,
+      this.ty,
+    ] = info;
+
+    const rotInfo = info[3];
+
+    if(rotInfo !== null){
+      [
+        this.rtx,
+        this.rty,
+        this.rot,
+        this.rcos,
+        this.rsin,
+      ] = rotInfo;
     }
   }
 
