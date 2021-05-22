@@ -4449,12 +4449,12 @@ const O = {
 
   // Other functions
 
-  *mapr(arr, func){
-    const len = arr.length;
+  *mapr(iterable, func){
     const arrNew = [];
+    let i = 0;
 
-    for(let i = 0; i !== len; i++)
-      arrNew.push(yield [func, arr[i], i, arr]);
+    for(const elem of iterable)
+      arrNew.push(yield [func, elem, i, iterable]);
 
     return arrNew;
   },
