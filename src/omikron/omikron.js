@@ -2672,7 +2672,7 @@ class Serializer extends IO{
 
   read(max=1){
     max = BigInt(max | 0);
-    if(max === 0n) return;
+    if(max === 0n) return 0n;
 
     let mask = 1n;
     while(mask <= max) mask <<= 1n;
@@ -4117,6 +4117,15 @@ const O = {
 
     for(let i = 0; i !== len; i++)
       arr.push(func(i, i / len, len));
+
+    return arr;
+  },
+
+  *car(len, func){
+    const arr = [];
+
+    for(let i = 0; i !== len; i++)
+      arr.push(yield [func, i, i / len, len]);
 
     return arr;
   },
