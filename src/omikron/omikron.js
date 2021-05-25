@@ -2647,7 +2647,7 @@ class Serializer extends IO{
     super(buf, checksum);
   }
 
-  write(num, max=1n){
+  write(num, max=1){
     num = BigInt(num | 0);
     max = BigInt(max | 0);
     if(max === 0n) return;
@@ -2670,7 +2670,7 @@ class Serializer extends IO{
     return this;
   }
 
-  read(max=1n){
+  read(max=1){
     max = BigInt(max | 0);
     if(max === 0n) return;
 
