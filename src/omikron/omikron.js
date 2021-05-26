@@ -4478,6 +4478,13 @@ const O = {
     return arrNew;
   },
 
+  *mapg(iterable, func){
+    let i = 0;
+
+    for(const elem of iterable)
+      yield func(elem, i, iterable);
+  },
+
   get symbols(){
     return new Proxy(O.obj(), {
       get(t, key){
