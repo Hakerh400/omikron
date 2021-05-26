@@ -4473,7 +4473,7 @@ const O = {
     let i = 0;
 
     for(const elem of iterable)
-      arrNew.push(yield [func, elem, i, iterable]);
+      arrNew.push(yield [func, elem, i++, iterable]);
 
     return arrNew;
   },
@@ -4482,7 +4482,7 @@ const O = {
     let i = 0;
 
     for(const elem of iterable)
-      yield func(elem, i, iterable);
+      yield func(elem, i++, iterable);
   },
 
   get symbols(){
