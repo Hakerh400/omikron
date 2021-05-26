@@ -4189,13 +4189,13 @@ const O = {
     return obj;
   },
 
-  // For sets
-  first(set, defaultVal=null){
-    if(set.size === 0) return defaultVal;
-    return set.keys().next().value;
+  first(iterable, defaultVal=null){
+    for(const val of iterable)
+      return val;
+
+    return defaultVal;
   },
 
-  // For arrays
   last(arr, defaultVal=null){
     if(arr.length === 0) return defaultVal;
     return arr[arr.length - 1];
