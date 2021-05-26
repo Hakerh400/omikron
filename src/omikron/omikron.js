@@ -1228,6 +1228,7 @@ class EnhancedRenderingContext{
     this.h = this.canvas.height;
 
     this.s = 1;
+    this.gs = 1;
     this.tx = 0;
     this.ty = 0;
 
@@ -1399,8 +1400,10 @@ class EnhancedRenderingContext{
   }
 
   resetTransform(resetScale=1){
-    if(resetScale)
+    if(resetScale){
       this.s = 1;
+      this.gs = 1;
+    }
 
     this.tx = 0;
     this.ty = 0;
@@ -1411,6 +1414,7 @@ class EnhancedRenderingContext{
 
   scale(s){
     this.s *= s;
+    this.gs = 1 / this.s;
   }
 
   translate(x, y){
@@ -1452,6 +1456,8 @@ class EnhancedRenderingContext{
       this.tx,
       this.ty,
     ] = info;
+
+    this.gs = 1 / this.s;
 
     const rotInfo = info[3];
 
