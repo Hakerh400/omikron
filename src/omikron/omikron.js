@@ -4189,11 +4189,25 @@ const O = {
     return obj;
   },
 
-  first(iterable, defaultVal=null){
+  fst(iterable, defaultVal=null){
     for(const val of iterable)
       return val;
 
     return defaultVal;
+  },
+
+  uni(iterable, defaultVal=null){
+    let result = defaultVal;
+    let hasResult = 0;
+
+    for(const val of iterable){
+      if(hasResult) return defaultVal;
+
+      result = val;
+      hasResult = 1;
+    }
+
+    return result;
   },
 
   last(arr, defaultVal=null){
@@ -4206,7 +4220,9 @@ const O = {
     return arr;
   },
 
-  fst(set, defaultVal){ return O.first(set, defaultVal); },
+  first(iterable, defaultVal=null){
+    return O.fst(iterable, defaultVal);
+  },
 
   /*
     Random number generator
