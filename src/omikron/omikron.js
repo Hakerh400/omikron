@@ -1747,7 +1747,7 @@ class EnhancedRenderingContext{
     g.beginPath();
 
     drawingBlock: {
-      if(round === 1){
+      if(round){
         switch(dirs){
           case 0:
             g.arc(x + .5, y + .5, radius, 0, O.pi2);
