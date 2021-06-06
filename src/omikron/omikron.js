@@ -1594,18 +1594,19 @@ class EnhancedRenderingContext{
   }
 
   rect(x, y, w, h){
-    var s1 = 1 / this.s;
+    let s1 = this.rcos / this.s;
+    let s2 = -this.rsin / this.s;
 
     this.moveTo(x, y);
-    this.lineTo(x + w + s1, y);
+    this.lineTo(x + w + s1, y + s2);
 
     this.moveTo(x + w, y);
-    this.lineTo(x + w, y + h + s1);
+    this.lineTo(x + w + s2, y + h + s1);
 
-    this.moveTo(x + w + s1, y + h);
+    this.moveTo(x + w + s1, y + h + s2);
     this.lineTo(x, y + h);
 
-    this.moveTo(x, y + h + s1);
+    this.moveTo(x + s2, y + h + s1);
     this.lineTo(x, y);
   }
 
