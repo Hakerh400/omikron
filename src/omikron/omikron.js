@@ -1367,7 +1367,8 @@ class EnhancedRenderingContext{
     this.pointsQueue = [];
     this.arcsQueue = [];
 
-    this.concaveMode = false;
+    this.concaveMode = 0;
+    this.aligned = 1;
 
     [
       'fillStyle',
@@ -1455,7 +1456,7 @@ class EnhancedRenderingContext{
   }
 
   finishLine(fillMode){
-    var {g} = this;
+    var {g, aligned} = this;
     var q = this.pointsQueue;
     var aq = this.arcsQueue;
 
@@ -1486,7 +1487,7 @@ class EnhancedRenderingContext{
       var x2 = q[i + 1];
       var y2 = q[i + 2];
 
-      if(fillMode){
+      if(fillMode && !aligned){
         if(abs(x1 - x2) === 1) x2 = x1;
         if(abs(y1 - y2) === 1) y2 = y1;
       }
@@ -1500,8 +1501,8 @@ class EnhancedRenderingContext{
       if(fillMode){
         g.lineTo(x2, y2);
       }else{
-        var dx = y1 !== y2 ? .5 : 0;
-        var dy = x1 !== x2 ? .5 : 0;
+        const dx = aligned && y1 !== y2 ? .5 : 0;
+        const dy = aligned && x1 !== x2 ? .5 : 0;
 
         g.moveTo(x1 + dx, y1 + dy);
         g.lineTo(x2 + dx, y2 + dy);
@@ -1611,6 +1612,8 @@ class EnhancedRenderingContext{
   }
 
   fillRect(x, y, w, h){
+    const {aligned} = this;
+
     if(this.rot){
       this.beginPath();
       this.rect(x, y, w, h);
@@ -1618,7 +1621,7 @@ class EnhancedRenderingContext{
       return;
     }
 
-    this.g.fillRect(round(x * this.s + this.tx), round(y * this.s + this.ty), round(w * this.s) + 1, round(h * this.s) + 1);
+    this.g.fillRect(round(x * this.s + this.tx), round(y * this.s + this.ty), round(w * this.s) + aligned, round(h * this.s) + aligned);
   }
 
   strokeRect(x, y, w, h){
@@ -1629,7 +1632,7 @@ class EnhancedRenderingContext{
       return;
     }
 
-    this.g.strokeRect(round(x * this.s + this.tx) + .5, round(y * this.s + this.ty) + .5, round(w * this.s) + 1, round(h * this.s) + 1);
+    this.g.strokeRect(round(x * this.s + this.tx) + aligned / 2, round(y * this.s + this.ty) + aligned / 2, round(w * this.s) + aligned, round(h * this.s) + aligned);
   }
 
   moveTo(x, y){
@@ -1657,6 +1660,8 @@ class EnhancedRenderingContext{
   }
 
   arc(x, y, r, a1, a2, acw){
+    const {aligned} = this;
+
     if(this.rot){
       var xx = x - this.rtx;
       var yy = y - this.rty;
@@ -1668,8 +1673,8 @@ class EnhancedRenderingContext{
       a2 = (a2 - this.rot) % O.pi2;
     }
 
-    var xx = x * this.s + this.tx + .5;
-    var yy = y * this.s + this.ty + .5;
+    var xx = x * this.s + this.tx + aligned / 2;
+    var yy = y * this.s + this.ty + aligned / 2;
     var rr = r * this.s;
     this.arcsQueue.push(this.pointsQueue.length, xx, yy, rr, a1, a2, acw);
 
@@ -1679,6 +1684,8 @@ class EnhancedRenderingContext{
   }
 
   fillText(text, x, y){
+    const {aligned} = this;
+
     if(this.rot){
       var xx = x - this.rtx;
       var yy = y - this.rty;
@@ -1687,10 +1694,12 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.g.fillText(text, round(x * this.s + this.tx) + 1, round(y * this.s + this.ty) + 1);
+    this.g.fillText(text, round(x * this.s + this.tx) + aligned, round(y * this.s + this.ty) + aligned);
   }
 
   strokeText(text, x, y){
+    const {aligned} = this;
+
     if(this.rot){
       var xx = x - this.rtx;
       var yy = y - this.rty;
@@ -1699,7 +1708,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.g.strokeText(text, round(x * this.s + this.tx) + 1, round(y * this.s + this.ty) + 1);
+    this.g.strokeText(text, round(x * this.s + this.tx) + aligned, round(y * this.s + this.ty) + aligned);
   }
 
   updateFont(){
@@ -4555,7 +4564,9 @@ const O = {
 
   drawStar(g, x, y, r1, r2, spikes, rot=0){
     const {sin, cos} = Math;
-    const {pi2} = O;
+    const {pih, pi2} = O;
+
+    rot -= pih;
 
     for(let i = 0; i !== spikes; i++){
       const angle1 = rot + (i / spikes) * pi2;
