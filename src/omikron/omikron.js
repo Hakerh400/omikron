@@ -1611,7 +1611,7 @@ class EnhancedRenderingContext{
 
   fillRect(x, y, w, h){
     if(this.rot){
-      this.g.beginPath();
+      this.beginPath();
       this.rect(x, y, w, h);
       this.fill();
       return;
@@ -1622,7 +1622,7 @@ class EnhancedRenderingContext{
 
   strokeRect(x, y, w, h){
     if(this.rot){
-      this.g.beginPath();
+      this.beginPath();
       this.rect(x, y, w, h);
       this.stroke();
       return;
