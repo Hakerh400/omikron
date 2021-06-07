@@ -1738,6 +1738,21 @@ class EnhancedRenderingContext{
     this.updateFont();
   }
 
+  clipRect(x, y, w, h){
+    const {g, s, tx, ty, aligned} = this;
+
+    g.save();
+    g.beginPath();
+    g.rect(round(x * s + tx) + aligned, round(y * s + ty) + aligned, w * s, h * s);
+    g.clip();
+  }
+
+  unclipRect(){
+    const {g} = this;
+
+    g.restore();
+  }
+
   drawTube(x, y, dirs, size, round=0){
     const g = this;
 
