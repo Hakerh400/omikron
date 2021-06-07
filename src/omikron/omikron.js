@@ -1625,6 +1625,8 @@ class EnhancedRenderingContext{
   }
 
   strokeRect(x, y, w, h){
+    const {aligned} = this;
+    
     if(this.rot){
       this.beginPath();
       this.rect(x, y, w, h);
