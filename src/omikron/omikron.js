@@ -1348,7 +1348,8 @@ class EnhancedRenderingContext{
     this.w = this.canvas.width;
     this.h = this.canvas.height;
 
-    this.s = 1;
+    this.sx = 1;
+    this.sy = 1;
     this.gs = 1;
     this.tx = 0;
     this.ty = 0;
@@ -1415,6 +1416,7 @@ class EnhancedRenderingContext{
       'globalCompositeOperation',
       'lineCap',
       'lineJoin',
+      'font',
     ];
 
     const values = attribs.map(a => g[a]);
@@ -1523,7 +1525,8 @@ class EnhancedRenderingContext{
 
   resetTransform(resetScale=1){
     if(resetScale){
-      this.s = 1;
+      this.sx = 1;
+      this.sy = 1;
       this.gs = 1;
     }
 
@@ -1534,14 +1537,15 @@ class EnhancedRenderingContext{
     this.g.resetTransform();
   }
 
-  scale(s){
-    this.s *= s;
-    this.gs = 1 / this.s;
+  scale(sx, sy=xs){
+    this.sx *= sx;
+    this.sy *= sy;
+    this.gs = 1 / this.sx;
   }
 
   translate(x, y){
-    this.tx += this.s * x;
-    this.ty += this.s * y;
+    this.tx += this.sx * x;
+    this.ty += this.sy * y;
   }
 
   rotate(x, y, angle){
@@ -1557,7 +1561,8 @@ class EnhancedRenderingContext{
 
   save(rot=0){
     this.ctxInfo.push([
-      this.s,
+      this.sx,
+      this.sy,
       this.tx,
       this.ty,
       rot ? [
@@ -1574,12 +1579,13 @@ class EnhancedRenderingContext{
     const info = this.ctxInfo.pop();
 
     [
-      this.s,
+      this.sx,
+      this.sy,
       this.tx,
       this.ty,
     ] = info;
 
-    this.gs = 1 / this.s;
+    this.gs = 1 / this.sx;
 
     const rotInfo = info[3];
 
@@ -1595,8 +1601,8 @@ class EnhancedRenderingContext{
   }
 
   rect(x, y, w, h){
-    let s1 = this.rcos / this.s;
-    let s2 = -this.rsin / this.s;
+    let s1 = this.rcos / this.sx;
+    let s2 = -this.rsin / this.sy;
 
     this.moveTo(x, y);
     this.lineTo(x + w + s1, y + s2);
@@ -1621,7 +1627,7 @@ class EnhancedRenderingContext{
       return;
     }
 
-    this.g.fillRect(round(x * this.s + this.tx), round(y * this.s + this.ty), round(w * this.s) + aligned, round(h * this.s) + aligned);
+    this.g.fillRect(round(x * this.sx + this.tx), round(y * this.sy + this.ty), round(w * this.sx) + aligned, round(h * this.sy) + aligned);
   }
 
   strokeRect(x, y, w, h){
@@ -1634,7 +1640,7 @@ class EnhancedRenderingContext{
       return;
     }
 
-    this.g.strokeRect(round(x * this.s + this.tx) + aligned / 2, round(y * this.s + this.ty) + aligned / 2, round(w * this.s) + aligned, round(h * this.s) + aligned);
+    this.g.strokeRect(round(x * this.sx + this.tx) + aligned / 2, round(y * this.sy + this.ty) + aligned / 2, round(w * this.sx) + aligned, round(h * this.sy) + aligned);
   }
 
   moveTo(x, y){
@@ -1646,7 +1652,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.pointsQueue.push(0, round(x * this.s + this.tx), round(y * this.s + this.ty));
+    this.pointsQueue.push(0, round(x * this.sx + this.tx), round(y * this.sy + this.ty));
   }
 
   lineTo(x, y){
@@ -1658,7 +1664,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.pointsQueue.push(1, round(x * this.s + this.tx), round(y * this.s + this.ty));
+    this.pointsQueue.push(1, round(x * this.sx + this.tx), round(y * this.sy + this.ty));
   }
 
   arc(x, y, r, a1, a2, acw){
@@ -1675,9 +1681,9 @@ class EnhancedRenderingContext{
       a2 = (a2 - this.rot) % O.pi2;
     }
 
-    var xx = x * this.s + this.tx + aligned / 2;
-    var yy = y * this.s + this.ty + aligned / 2;
-    var rr = r * this.s;
+    var xx = x * this.sx + this.tx + aligned / 2;
+    var yy = y * this.sy + this.ty + aligned / 2;
+    var rr = r * this.sx;
     this.arcsQueue.push(this.pointsQueue.length, xx, yy, rr, a1, a2, acw);
 
     xx += cos(a2) * rr;
@@ -1696,7 +1702,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.g.fillText(text, round(x * this.s + this.tx) + aligned, round(y * this.s + this.ty) + aligned);
+    this.g.fillText(text, round(x * this.sx + this.tx) + aligned, round(y * this.sy + this.ty) + aligned);
   }
 
   strokeText(text, x, y){
@@ -1710,7 +1716,7 @@ class EnhancedRenderingContext{
       y = this.rty + yy * this.rcos + xx * this.rsin;
     }
 
-    this.g.strokeText(text, round(x * this.s + this.tx) + aligned, round(y * this.s + this.ty) + aligned);
+    this.g.strokeText(text, round(x * this.sx + this.tx) + aligned, round(y * this.sy + this.ty) + aligned);
   }
 
   updateFont(){
@@ -1741,11 +1747,11 @@ class EnhancedRenderingContext{
   }
 
   clipRect(x, y, w, h){
-    const {g, s, tx, ty, aligned} = this;
+    const {g, sx, sy, tx, ty, aligned} = this;
 
     g.save();
     g.beginPath();
-    g.rect(round(x * s + tx) + aligned, round(y * s + ty) + aligned, w * s, h * s);
+    g.rect(round(x * sx + tx) + aligned, round(y * sy + ty) + aligned, w * sx, h * sy);
     g.clip();
   }
 
