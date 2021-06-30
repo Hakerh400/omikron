@@ -4379,6 +4379,17 @@ const O = {
     return O.fst(iterable, defaultVal);
   },
 
+  indexOf(iterable, elem){
+    let i = 0;
+
+    for(const e of iterable){
+      if(e === elem) return i;
+      i++;
+    }
+
+    return null;
+  },
+
   /*
     Random number generator
   */
