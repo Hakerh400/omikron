@@ -3144,7 +3144,9 @@ class CustomError extends Error{
 class AssertionError extends CustomError{
   constructor(msg){
     super(msg);
-    // new Function('debugger')();
+
+    if(O.dbgAssert)
+      new Function('debugger')();
   }
 }
 
@@ -3187,6 +3189,7 @@ const O = {
   displayBigIntsAsOrdinaryNumbers: 0,
   debugRecursiveCalls: 0,
   adaptedForNode: 0,
+  dbgAssert: 0,
 
   // Node modules
 
