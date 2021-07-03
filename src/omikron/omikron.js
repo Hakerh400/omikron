@@ -1448,12 +1448,12 @@ class EnhancedRenderingContext{
   }
 
   fill(){
-    this.finishLine(true);
+    this.finishLine(1);
     this.g.fill();
   }
 
   stroke(){
-    this.finishLine(false);
+    this.finishLine(0);
     this.g.stroke();
   }
 
@@ -1601,19 +1601,29 @@ class EnhancedRenderingContext{
   }
 
   rect(x, y, w, h){
-    let s1 = this.rcos / this.sx;
-    let s2 = -this.rsin / this.sy;
+    // let s1 = this.rcos / this.sx;
+    // let s2 = -this.rsin / this.sy;
+
+    const {gs} = this;
+    const w1 = w + gs;
+    const h1 = h + gs;
+
+    // this.moveTo(x, y);
+    // this.lineTo(x + w, y);
+    // this.lineTo(x + w, y + h);
+    // this.lineTo(x, y + h);
+    // this.lineTo(x, y);
 
     this.moveTo(x, y);
-    this.lineTo(x + w + s1, y + s2);
+    this.lineTo(x + w1, y);
 
     this.moveTo(x + w, y);
-    this.lineTo(x + w + s2, y + h + s1);
+    this.lineTo(x + w, y + h1);
 
-    this.moveTo(x + w + s1, y + h + s2);
+    this.moveTo(x + w1, y + h);
     this.lineTo(x, y + h);
 
-    this.moveTo(x + s2, y + h + s1);
+    this.moveTo(x, y + h1);
     this.lineTo(x, y);
   }
 
@@ -1867,29 +1877,29 @@ class EnhancedRenderingContext{
       g.stroke();
 
       const col = g.strokeStyle;
-      const s = 1 / g.s;
+      const {gs} = g;
 
       g.strokeStyle = g.fillStyle;
       g.beginPath();
 
       if(dirs & 1){
-        g.moveTo(x + s1 + s, y);
-        g.lineTo(x + s2 - s, y);
+        g.moveTo(x + s1 + gs, y);
+        g.lineTo(x + s2 - gs, y);
       }
 
       if(dirs & 2){
-        g.moveTo(x + 1, y + s1 + s);
-        g.lineTo(x + 1, y + s2 - s);
+        g.moveTo(x + 1, y + s1 + gs);
+        g.lineTo(x + 1, y + s2 - gs);
       }
 
       if(dirs & 4){
-        g.moveTo(x + s2 - s, y + 1);
-        g.lineTo(x + s1 + s, y + 1);
+        g.moveTo(x + s2, y + 1);
+        g.lineTo(x + s1 + gs, y + 1);
       }
 
       if(dirs & 8){
         g.moveTo(x, y + s2);
-        g.lineTo(x, y + s1 + s);
+        g.lineTo(x, y + s1 + gs);
       }
 
       g.stroke();
