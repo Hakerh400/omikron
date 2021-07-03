@@ -1537,7 +1537,7 @@ class EnhancedRenderingContext{
     this.g.resetTransform();
   }
 
-  scale(sx, sy=xs){
+  scale(sx, sy=sx){
     this.sx *= sx;
     this.sy *= sy;
     this.gs = 1 / this.sx;
