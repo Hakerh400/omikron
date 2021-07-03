@@ -1587,7 +1587,7 @@ class EnhancedRenderingContext{
 
     this.gs = 1 / this.sx;
 
-    const rotInfo = info[3];
+    const rotInfo = info[4];
 
     if(rotInfo !== null){
       [
