@@ -5047,13 +5047,18 @@ const O = {
   },
 
   kTco: Symbol('tco'),
+  kBreakRec: Symbol('breakRec'),
 
   tco(...args){
     return [O.kTco, ...args];
   },
 
+  breakRec(result){
+    return [O.kBreakRec, result];
+  },
+
   rec(f, ...args){
-    const {kTco} = O;
+    const {kTco, kBreakRec} = O;
 
     const dbg = O.debugRecursiveCalls;
     let nameStack = dbg ? [] : null;
@@ -5160,14 +5165,27 @@ const O = {
       const result = gen.next(val);
       const {done, value} = result;
 
-      if(Array.isArray(value) && value[0] === kTco){
-        if(dbg){
-          log('TCO', nameStack.pop());
-          log.dec();
-        }
+      if(Array.isArray(value) && value.length !== 0 && typeof value[0] === 'symbol'){
+        const sym = value[0];
 
-        stack.pop();
-        value.shift();
+        checkSym: {
+          if(sym === kTco){
+            if(dbg){
+              log('TCO', nameStack.pop());
+              log.dec();
+            }
+
+            stack.pop();
+            value.shift();
+
+            break checkSym;
+          }
+
+          if(sym === kBreakRec)
+            return value[1];
+
+          O.assert.fail();
+        }
       }else if(done){
         if(dbg){
           log('RET', nameStack.pop(), ...dbg === 2 ? [value] : []);
