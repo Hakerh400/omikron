@@ -5048,6 +5048,8 @@ const O = {
 
   kTco: Symbol('tco'),
   kBreakRec: Symbol('breakRec'),
+  kTry: Symbol('try'),
+  kThrow: Symbol('throw'),
 
   tco(...args){
     return [O.kTco, ...args];
@@ -5057,8 +5059,16 @@ const O = {
     return [O.kBreakRec, result];
   },
 
+  try(...args){
+    return [O.kTry, ...args];
+  },
+
+  throw(err){
+    return [O.kThrow, err];
+  },
+
   rec(f, ...args){
-    const {kTco, kBreakRec} = O;
+    const {kTco, kBreakRec, kTry, kThrow} = O;
 
     const dbg = O.debugRecursiveCalls;
     let nameStack = dbg ? [] : null;
@@ -5125,6 +5135,8 @@ const O = {
         func = methodContainer[methodName];
 
         if(!func){
+          log(obj);
+
           if(Array.isArray(obj))
             err(`Received an array as the target object (you probably added extra brackets)`);
 
@@ -5153,16 +5165,30 @@ const O = {
         func.apply(null, args) :
         func.apply(f[0], args)
 
-      return [gen, null];
+      // 0 - Generator
+      // 1 - Current value
+      // 2 - [bool] Is inside a try block
+
+      return [gen, null, 0];
     };
 
     const stack = [makeStackFrame(f, args)];
 
-    while(1){
+    mainLoop: while(1){
       const frame = O.last(stack);
       const [gen, val] = frame;
 
-      const result = gen.next(val);
+      O.assert(!frame[2]);
+
+      const getResult = () => {
+        try{
+          return gen.next(val);
+        }catch(err){
+          return {done: 1, value: [kThrow, err]};
+        }
+      };
+
+      const result = getResult();
       const {done, value} = result;
 
       if(Array.isArray(value) && value.length !== 0 && typeof value[0] === 'symbol'){
@@ -5184,6 +5210,36 @@ const O = {
           if(sym === kBreakRec)
             return value[1];
 
+          if(sym === kTry){
+            frame[2] = 1;
+            value.shift();
+
+            break checkSym;
+          }
+
+          if(sym === kThrow){
+            const err = value[1];
+
+            while(1){
+              if(stack.length === 0)
+                throw err;
+
+              const frame = O.last(stack);
+
+              if(!frame[2]){
+                stack.pop();
+                continue;
+              }
+
+              frame[1] = [0, err];
+              frame[2] = 0;
+
+              continue mainLoop;
+            }
+
+            O.assert.fail();
+          }
+
           O.assert.fail();
         }
       }else if(done){
@@ -5196,7 +5252,15 @@ const O = {
           return value;
 
         stack.pop();
-        O.last(stack)[1] = value;
+
+        const frame = O.last(stack);
+
+        if(!frame[2]){
+          frame[1] = value;
+        }else{
+          frame[1] = [1, value];
+          frame[2] = 0;
+        }
 
         continue;
       }
