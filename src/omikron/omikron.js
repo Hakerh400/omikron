@@ -5135,8 +5135,6 @@ const O = {
         func = methodContainer[methodName];
 
         if(!func){
-          log(obj);
-
           if(Array.isArray(obj))
             err(`Received an array as the target object (you probably added extra brackets)`);
 
