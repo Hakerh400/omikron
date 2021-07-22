@@ -3866,8 +3866,15 @@ const O = {
       return O.rfAsync(path, ...args);
     };
 
-    if(/\.[^\/]+$/.test(path)){
-      data = await load(path, path.endsWith('.hex'));
+    const extMatch = path.match(/\.([^\/\.]+)$/);
+
+    if(extMatch !== null){
+      const ext = extMatch[1];
+
+      if(ext === 'js') type = 2;
+      else if (ext === 'json') type = 1;
+
+      data = await load(path, ext === 'hex');
     }else if((data = await load(`${path}.js`)) !== null){
       type = 2;
       path += '.js';
@@ -5472,6 +5479,27 @@ const O = {
   },
 
   bisect(f){
+    if(f(0)) return 0;
+
+    let i = 0;
+    let j = 1;
+
+    while(!f(j)){
+      i = j;
+      j <<= 1;
+    }
+
+    while(j - i !== 1){
+      const k = i + j >> 1;
+
+      if(f(k)) j = k;
+      else i = k;
+    }
+
+    return j;
+  },
+
+  bisectn(f){
     if(f(0n)) return 0n;
 
     let i = 0n;
