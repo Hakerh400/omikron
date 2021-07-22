@@ -4585,7 +4585,6 @@ const O = {
 
   drawArc(g, ax, ay, bx, by, k=1){
     if(k === 0){
-      z
       g.lineTo(bx, by);
       return null;
     }
