@@ -5057,6 +5057,7 @@ const O = {
   kBreakRec: Symbol('breakRec'),
   kTry: Symbol('try'),
   kThrow: Symbol('throw'),
+  kYield: Symbol('yield'),
 
   tco(...args){
     return [O.kTco, ...args];
@@ -5074,8 +5075,12 @@ const O = {
     return [O.kThrow, err];
   },
 
-  rec(f, ...args){
-    const {kTco, kBreakRec, kTry, kThrow} = O;
+  yield(val){
+    return [O.kYield, val];
+  },
+
+  *recg(f, ...args){
+    const {kTco, kBreakRec, kTry, kThrow, kYield} = O;
 
     const dbg = O.debugRecursiveCalls;
     let nameStack = dbg ? [] : null;
@@ -5245,6 +5250,11 @@ const O = {
             O.assert.fail();
           }
 
+          if(sym === kYield){
+            frame[1] = yield value[1];
+            continue mainLoop;
+          }
+
           O.assert.fail();
         }
       }else if(done){
@@ -5288,6 +5298,16 @@ const O = {
 
       stack.push(makeStackFrame(value[0], value.slice(1)));
     }
+  },
+
+  rec(...args){
+    const gen = O.recg(...args);
+    const result = gen.next();
+
+    if(!result.done)
+      throw new TypeError(`Non-generator recursion yielded a value. Use \`recg\` instead`);
+
+    return result.value;
   },
 
   examine(value, print=1){
