@@ -1208,24 +1208,28 @@ class AsyncGrid{
     return dir - 1;
   }
 
-  nav(v, dir, wrap=0){
+  nav1(x, y, dir, wrap=0){
     const {w, h} = this;
 
     switch(dir){
-      case 0: v.y--; break;
-      case 1: v.x++; break;
-      case 2: v.y++; break;
-      case 3: v.x--; break;
+      case 0: y--; break;
+      case 1: x++; break;
+      case 2: y++; break;
+      case 3: x--; break;
     }
 
     if(wrap){
-      if(v.x === -1) v.x = w - 1;
-      if(v.y === -1) v.y = h - 1;
-      if(v.x === w) v.x = 0;
-      if(v.y === h) v.y = 0;
+      if(x === -1) x = w - 1;
+      if(y === -1) y = h - 1;
+      if(x === w) x = 0;
+      if(y === h) y = 0;
     }
 
-    return this.get(v.x, v.y, wrap);
+    return this.get(x, y, wrap);
+  }
+
+  nav(v, ...args){
+    return this.nav1(v.x, v.y, ...args);
   }
 
   async path(xs, ys, wrap=null, all=null, func=null){
@@ -4371,7 +4375,7 @@ const O = {
     return defaultVal;
   },
 
-  uni(iterable, defaultVal=null){
+  the(iterable, defaultVal=null){
     let result = defaultVal;
     let hasResult = 0;
 
@@ -4383,6 +4387,10 @@ const O = {
     }
 
     return result;
+  },
+
+  uni(...args){
+    return O.the(...args);
   },
 
   last(arr, defaultVal=null){
@@ -5055,6 +5063,7 @@ const O = {
 
   kTco: Symbol('tco'),
   kBreakRec: Symbol('breakRec'),
+  kRet: Symbol('kret'),
   kTry: Symbol('try'),
   kThrow: Symbol('throw'),
   kYield: Symbol('yield'),
@@ -5065,6 +5074,10 @@ const O = {
 
   breakRec(result){
     return [O.kBreakRec, result];
+  },
+
+  ret(result){
+    return [O.kRet, result];
   },
 
   try(...args){
@@ -5080,7 +5093,7 @@ const O = {
   },
 
   *recg(f, ...args){
-    const {kTco, kBreakRec, kTry, kThrow, kYield} = O;
+    const {kTco, kBreakRec, kRet, kTry, kThrow, kYield} = O;
 
     const dbg = O.debugRecursiveCalls;
     let nameStack = dbg ? [] : null;
@@ -5217,7 +5230,7 @@ const O = {
             break checkSym;
           }
 
-          if(sym === kBreakRec)
+          if(sym === kBreakRec || sym === kRet)
             return value[1];
 
           if(sym === kTry){
