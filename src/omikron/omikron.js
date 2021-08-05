@@ -5027,6 +5027,18 @@ const O = {
   sortAsc(arr){ return arr.sort((elem1, elem2) => elem1 > elem2 ? 1 : elem1 < elem2 ? -1 : 0); },
   sortDesc(arr){ return arr.sort((elem1, elem2) => elem1 > elem2 ? -1 : elem1 < elem2 ? 1 : 0); },
   undupe(arr){ return arr.filter((a, b, c) => c.indexOf(a) === b); },
+
+  *undupeIter(iterable){
+    const set = new Set();
+
+    for(const val of iterable){
+      if(set.has(val)) continue;
+
+      yield val;
+      set.add(val);
+    }
+  },
+
   obj(proto=null){ return Object.create(proto); },
   keys(obj){ return Reflect.ownKeys(obj); },
   vals(obj){ return O.keys(obj).map(a => obj[a]); },
