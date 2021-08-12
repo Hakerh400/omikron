@@ -4337,6 +4337,10 @@ const O = {
     return arr;
   },
 
+  shuffleSet(set){
+    return new Set(O.shuffle([...set]));
+  },
+
   flatten(arr){
     var a = [];
 
