@@ -4439,6 +4439,15 @@ const O = {
     return null;
   },
 
+  size(iter){
+    let size = 0;
+
+    for(const elem of iter)
+      size++;
+
+    return size;
+  },
+
   /*
     Random number generator
   */
