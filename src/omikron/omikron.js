@@ -4290,7 +4290,7 @@ const O = {
   rept(arr, n){ return O.ca(arr.length * n, i => arr[i % arr.length]); },
 
   /*
-    Array functions
+    Iterators
   */
 
   isArr(val){
@@ -4407,14 +4407,14 @@ const O = {
     return arr;
   },
 
-  first(iterable, defaultVal=null){
-    return O.fst(iterable, defaultVal);
+  first(iter, defaultVal=null){
+    return O.fst(iter, defaultVal);
   },
 
-  indexOf(iterable, elem){
+  indexOf(iter, elem){
     let i = 0;
 
-    for(const e of iterable){
+    for(const e of iter){
       if(e === elem) return i;
       i++;
     }
@@ -4422,13 +4422,21 @@ const O = {
     return null;
   },
 
-  execIter(iterable){
+  execIter(iter){
     while(1){
-      const result = iterable.next();
+      const result = iter.next();
       
       if(result.done)
         return result.value;
     }
+  },
+
+  elemAt(iter, index){
+    for(const elem of iter)
+      if(index-- === 0)
+        return elem;
+
+    return null;
   },
 
   /*
