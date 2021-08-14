@@ -4422,6 +4422,15 @@ const O = {
     return null;
   },
 
+  execIter(iterable){
+    while(1){
+      const result = iterable.next();
+      
+      if(result.done)
+        return result.value;
+    }
+  },
+
   /*
     Random number generator
   */
