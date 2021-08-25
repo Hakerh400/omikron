@@ -37,17 +37,17 @@ class Set2D{
 
   add(x, y){
     const d = this.#d;
-    
+
     if(y in d){
       if(x in d[y]) return this;
     }else{
       d[y] = Set2D.obj();
     }
-    
+
     d[y][x] = 1;
     d[y][Set2D.#sym]++;
     this.#size++;
-    
+
     return this;
   }
 
@@ -696,7 +696,7 @@ class Color extends Uint8ClampedArray{
       const H = match[1] / 360;
       const S = match[2] / 100;
       const L = match[3] / 100;
-      
+
       return O.Color.hsl2rgb(H, S, L);
     }
 
@@ -742,7 +742,7 @@ class Color extends Uint8ClampedArray{
 
     if(!(O.isBrowser || O.isElectron))
       throw new TypeError('This functionality is available only in a browser or Electron');
-    
+
     const g = document.createElement('canvas').getContext('2d');
     this.#g = g;
 
@@ -1646,7 +1646,7 @@ class EnhancedRenderingContext{
 
   strokeRect(x, y, w, h){
     const {aligned} = this;
-    
+
     if(this.rot){
       this.beginPath();
       this.rect(x, y, w, h);
@@ -2041,7 +2041,7 @@ class Buffer extends Uint8Array{
         return O.base64.encode(this);
         break;
 
-      case 'utf8': case 'utf-8': 
+      case 'utf8': case 'utf-8':
         return new TextDecoder().decode(this);
       break;
 
@@ -2105,20 +2105,20 @@ class AsyncIterable{
   async topDown(func){
     const {kCont, kBreak} = this;
     const stack = [this];
-  
+
     while(stack.length !== 0){
       const elem = stack.pop();
-  
+
       const result = await func(elem);
       if(result === kCont) continue;
       if(result === kBreak) return 1;
-  
+
       const chNum = await elem.getChNum();
-  
+
       for(let i = chNum - 1; i !== -1; i--)
         stack.push(await elem.getCh(i));
     }
-  
+
     return 0;
   }
 
@@ -3208,6 +3208,7 @@ const O = {
   // Node modules
 
   nm: null,
+  electronReq: null,
 
   module: {
     cache: null,
@@ -3362,6 +3363,9 @@ const O = {
 
     O.base64 = O.base64();
     O.base62 = O.base62();
+
+    if(typeof electronReq !== 'undefined')
+      O.electronReq = electronReq;
 
     if(loadProject){
       const mainProject = 'main';
@@ -3548,7 +3552,7 @@ const O = {
 
       if(typeof err === 'string')
         err = `ERROR: ${err}`;
-      
+
       O.exit(err);
       return;
     }
@@ -3772,7 +3776,7 @@ const O = {
   addStyle(pth, local=1){
     if(local) pth = O.localPath(pth);
     const style = O.ce(O.head, 'style');
-    
+
     return new Promise(res => {
       O.rf(pth, (a, b) => {
         style.innerHTML = b;
@@ -3862,7 +3866,7 @@ const O = {
     let data = null;
     let pathResolved = null;
 
-    if(pathOrig in cache)
+    if(O.has(cache, pathOrig))
       return cache[pathOrig];
 
     const load = (path, ...args) => {
@@ -3917,7 +3921,16 @@ const O = {
     const module = new O.Module(pathMatch, cache, pathOrig);
 
     const require = async newPath => {
-      var resolvedPath;
+      if(newPath === 'electron'){
+        const {electronReq} = O;
+
+        if(electronReq === null)
+          return null;
+
+        return electronReq('electron');
+      }
+
+      let resolvedPath = null;
 
       if(/^(?:\/|https?\:\/\/|[^\.@][\s\S]*\/)/.test(newPath)){
         resolvedPath = newPath;
@@ -3971,7 +3984,7 @@ const O = {
           replace(/^const (?:O|debug) = require\(.+\s*/gm, '').
           replace(/^const (\S+) = (require|O\.rfs)\(/gm, (a, b, c) => `const ${b} = await ${c}(`);
 
-        detectSuspiciousCalls: {
+        detectSuspiciousCalls: if(0){
           let reg = / const \S+ = (?:require|O\.rfs)\(/m;
           if(!reg.test(data)) break detectSuspiciousCalls;
 
@@ -4235,7 +4248,7 @@ const O = {
 
       const rstr = String(val);
       const reg = new RegExp(`^(?:${rstr.slice(1, rstr.length - 1)})`);
-      
+
       regs.push(reg);
     });
 
@@ -4425,7 +4438,7 @@ const O = {
   execIter(iter){
     while(1){
       const result = iter.next();
-      
+
       if(result.done)
         return result.value;
     }
@@ -5542,7 +5555,7 @@ const O = {
 
   nthPrime(index){
     if(index === 0) return 2n;
-    
+
     let num = 2n;
     index++;
 
@@ -5666,7 +5679,7 @@ const O = {
   rfs(file, str=0){
     if(O.isNode)
       return O.nm.fs.readFileSync(file, str ? 'utf8' : null);
-    
+
     return O.rfAsync(file, !str);
   },
 
