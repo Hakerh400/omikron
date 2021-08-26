@@ -3295,13 +3295,14 @@ const O = {
 
     const isBrowser = O.isBrowser = env === 'browser';
     const isElectron = 0//O.isElectron = isBrowser && navigator.userAgent.includes('Electron');
+    const isElectron1 = O.isElectron1 = isBrowser && navigator.userAgent.includes('Electron');
     const isNode = O.isNode = isElectron || env === 'node';
 
     if(isBrowser){
       if(CHROME_ONLY && global.navigator.vendor !== 'Google Inc.')
         return O.error('Please use Chrome.');
 
-      if(!isElectron){
+      if(!isElectron1){
         global.global = global;
         O.lst = window.localStorage;
         O.sst = window.sessionStorage;
@@ -3315,7 +3316,7 @@ const O = {
       O.baseURL = baseURL;
     }
 
-    if(isNode || isElectron){
+    if(isNode || isElectron1){
       O.initNodeModules();
       O.Buffer = global.Buffer;
     }
@@ -5677,7 +5678,7 @@ const O = {
   */
 
   rfs(file, str=0){
-    if(O.isNode)
+    if(O.isNode || O.isElectron1)
       return O.nm.fs.readFileSync(file, str ? 'utf8' : null);
 
     return O.rfAsync(file, !str);
