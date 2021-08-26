@@ -3173,6 +3173,7 @@ const O = {
   isNode: null,
   isBrowser: null,
   isElectron: null,
+  isElectron1: null,
 
   doc: document,
   head: document.head,
