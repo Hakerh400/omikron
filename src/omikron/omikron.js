@@ -2822,7 +2822,7 @@ class Serializer extends IO{
   }
 
   write(num, max=1){
-    // if(O.z === 7) log('W', Number(max), Number(num));
+    // if(O.z === 3) log('W', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
     num = BigInt(num | 0);
     max = BigInt(max | 0);
     if(max === 0n) return;
@@ -2852,7 +2852,7 @@ class Serializer extends IO{
     max = BigInt(max | 0);
 
     if(max === 0n){
-      // if(O.z === 7) log('R', Number(max), 0);
+      // if(O.z === 3) log('R', Number(max), 0, O.sanl(new Error().stack)[2].trim());
       return 0n;
     }
 
@@ -2876,7 +2876,7 @@ class Serializer extends IO{
       mask >>= 1n;
     }
 
-    // if(O.z === 7) log('R', Number(max), Number(num));
+    // if(O.z === 3) log('R', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
     return num;
   }
 
