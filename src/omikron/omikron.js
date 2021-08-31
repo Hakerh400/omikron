@@ -1122,15 +1122,10 @@ class AsyncGrid{
     return num;
   }
 
-  async iterAdj(x, y, all, wrap=null, func=null){
-    if(wrap === null){
-      func = all;
-      wrap = 0;
-      all = 0;
-    }else if(func === null){
+  async iterAdj(x, y, wrap, func=null){
+    if(func === null){
       func = wrap;
-      wrap = all;
-      all = 0;
+      wrap = 0;
     }
 
     const queue = [x, y];
