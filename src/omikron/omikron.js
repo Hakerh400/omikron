@@ -1063,7 +1063,7 @@ class AsyncGrid{
       d = O.ca(h, y => {
         return O.ca(w, x =>{
           if(func === null) return null;
-          return func(x, y);
+          return func(x, y, this);
         });
       });
     }
@@ -1122,10 +1122,15 @@ class AsyncGrid{
     return num;
   }
 
-  async iterAdj(x, y, wrap, func=null){
-    if(func === null){
-      func = wrap;
+  async iterAdj(x, y, all, wrap=null, func=null){
+    if(wrap === null){
+      func = all;
       wrap = 0;
+      all = 0;
+    }else if(func === null){
+      func = wrap;
+      wrap = all;
+      all = 0;
     }
 
     const queue = [x, y];
