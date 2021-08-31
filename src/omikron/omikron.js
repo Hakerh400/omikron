@@ -4714,6 +4714,13 @@ const O = {
     g.closePath();
   },
 
+  drawCirc(g, x, y, rad){
+    g.beginPath();
+    g.arc(x, y, rad, 0, O.pi2);
+    g.fill();
+    g.stroke();
+  },
+
   // Assertions
 
   assert(...args){
