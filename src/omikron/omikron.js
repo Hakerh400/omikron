@@ -6116,7 +6116,7 @@ const O = {
     const lower = O.chars('a', 'z');
     const upper = O.chars('A', 'Z');
     const chars = digits + lower + upper;
- 
+
     const chmap = O.obj();
     [...chars].forEach((a, i) => chmap[a] = i);
 
