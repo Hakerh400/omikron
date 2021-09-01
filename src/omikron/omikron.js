@@ -2822,7 +2822,7 @@ class Serializer extends IO{
   }
 
   write(num, max=1){
-    // if(O.z === 3) log('W', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
+    // if(1) log('W', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
     num = BigInt(num | 0);
     max = BigInt(max | 0);
     if(max === 0n) return;
@@ -2852,7 +2852,7 @@ class Serializer extends IO{
     max = BigInt(max | 0);
 
     if(max === 0n){
-      // if(O.z === 3) log('R', Number(max), 0, O.sanl(new Error().stack)[2].trim());
+      // if(1) log('R', Number(max), 0, O.sanl(new Error().stack)[2].trim());
       return 0n;
     }
 
@@ -2876,7 +2876,7 @@ class Serializer extends IO{
       mask >>= 1n;
     }
 
-    // if(O.z === 3) log('R', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
+    // if(1) log('R', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
     return num;
   }
 
@@ -3441,7 +3441,7 @@ const O = {
   },
 
   overrideConsole(){
-    const {global, isNode, isElectron} = O;
+    const {global, isNode, isElectron1: isElectron} = O;
     const nodeOrElectron = isNode || isElectron;
 
     let logOrig;
@@ -3529,7 +3529,7 @@ const O = {
   },
 
   inspect(arr){
-    if(!(O.isNode || O.isElectron))
+    if(!(O.isNode || O.isElectron1))
       throw new TypeError('Function "inspect" is available only in Node.js and Electron');
 
     const {util} = O.nm;
