@@ -2823,6 +2823,13 @@ class Serializer extends IO{
 
   write(num, max=1){
     // if(1) log('W', Number(max), Number(num), O.sanl(new Error().stack)[2].trim());
+
+    if(typeof num === 'number')
+      if(num % 1 !== 0) O.assertFail();
+
+    if(typeof max === 'number')
+      if(max % 1 !== 0) O.assertFail();
+
     num = BigInt(num | 0);
     max = BigInt(max | 0);
     if(max === 0n) return;
@@ -2849,6 +2856,9 @@ class Serializer extends IO{
   }
 
   read(max=1){
+    if(typeof max === 'number')
+      if(max % 1 !== 0) O.assertFail();
+
     max = BigInt(max | 0);
 
     if(max === 0n){
