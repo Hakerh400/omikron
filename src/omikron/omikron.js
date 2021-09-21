@@ -3056,15 +3056,6 @@ class NatSerializer{
     return nz;
   }
 
-  read(mod=2n){
-    mod = BigInt(mod);
-
-    const n = this.#input % mod;
-    this.#input /= mod;
-
-    return n;
-  }
-
   write(mod, num=null){
     if(num === null){
       num = mod;
@@ -3072,6 +3063,15 @@ class NatSerializer{
     }
 
     this.#stack.push(BigInt(mod), BigInt(num));
+  }
+
+  read(mod=2n){
+    mod = BigInt(mod);
+
+    const n = this.#input % mod;
+    this.#input /= mod;
+
+    return n;
   }
 
   inc(num=1n){
@@ -4757,6 +4757,11 @@ const O = {
 
   // Other functions
 
+  percent(k, n){
+    const percent = round((k + 1) / (n + 1) * 100);
+    return `${percent}%`;
+  },
+
   arrOrder: (() => {
     const arr = (vals, id, dir=0) => {
       const n = BigInt(vals.length);
@@ -5696,6 +5701,13 @@ const O = {
     return new Promise((res, rej) => O.raf2(() => {
       (async () => await func())().then(res, rej);
     }));
+  },
+
+  async rafd(func=null){
+    if(func !== null)
+      await func();
+
+    return O.rafa(O.nop);
   },
 
   animFrame(){
