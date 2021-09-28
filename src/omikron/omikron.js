@@ -3318,10 +3318,10 @@ const O = {
     const isBrowser = O.isBrowser = env === 'browser';
     const isElectron = 0//O.isElectron = isBrowser && navigator.userAgent.includes('Electron');
     const isElectron1 = O.isElectron1 =
-      isBrowser && (navigator.userAgentData ?
+      isBrowser && typeof require === 'function'/*(navigator.userAgentData ?
         navigator.userAgentData.brands &&
         navigator.userAgentData.brands.some(a => a.brand.includes('Electron')) :
-        navigator.userAgent.includes('Electron'));
+        navigator.userAgent.includes('Electron'))*/;
     const isNode = O.isNode = isElectron || env === 'node';
 
     if(isBrowser){
